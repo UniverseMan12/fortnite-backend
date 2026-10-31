@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
+import { patchLocalTools } from './patch-local-tools.js';
 
 export function patchReboot(root) {
   const dir = path.join(root, 'Project Reboot 3.0');
@@ -45,6 +46,7 @@ export function patchReboot(root) {
   update('dllmain.cpp', source => replace(source,
     '    while (SecondsUntilTravel > 0)\n    {\n        SecondsUntilTravel -= 1;\n\n        Sleep(1000);\n    }',
     '    while (!LauncherStartRequested.load()) Sleep(100);'));
+  patchLocalTools(root);
 }
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   if (!process.argv[2]) throw new Error('Pass the pinned Reboot source directory.');

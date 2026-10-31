@@ -1,0 +1,65 @@
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+export function patchLocalTools(root) {
+  const dir = path.join(root, 'Project Reboot 3.0');
+  const source = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', 'server');
+  for (const name of ['LocalTools.h', 'LocalTools.inl', 'LocalToolsUI.inl']) {
+    fs.copyFileSync(path.join(source, name), path.join(dir, name));
+  }
+  const edit = (name, replacements) => {
+    const file = path.join(dir, name);
+    let text = fs.readFileSync(file, 'utf8').replace(/\r\n/g, '\n');
+    if (text.includes('// Launcher local tools v1')) return;
+    for (const [before, after] of replacements) {
+      if (text.split(before).length !== 2) throw new Error('Pinned source does not match local-tools patch: ' + name);
+      text = text.replace(before, after);
+    }
+    fs.writeFileSync(file, '// Launcher local tools v1\n' + text);
+  };
+  edit('gui.h', [
+    ['#include "globals.h"', '#include "globals.h"\n#include "LocalTools.h"'],
+    ['static inline void MainUI()\n{', '#include "LocalToolsUI.inl"\n\nstatic inline void MainUI()\n{\n\tLauncherLocalToolsUI();'],
+    ['\tImGui::Checkbox("Infinite Ammo", &Globals::bInfiniteAmmo);', '\t// Local tools supply ammo as well as preserving it.'],
+    ['\tImGui::Checkbox("Infinite Materials", &Globals::bInfiniteMaterials);', '\t// Local tools refill the client-visible material stacks.']
+  ]);
+  edit('NetDriver.cpp', [
+    ['#include "gui.h"', '#include "gui.h"\n#include "LocalTools.inl"'],
+    ['void UNetDriver::TickFlushHook(UNetDriver* NetDriver)\n{',
+     'void UNetDriver::TickFlushHook(UNetDriver* NetDriver)\n{\n\tLocalTools::Tick(NetDriver);']
+  ]);
+  edit('FortPlayerController.cpp', [
+    ['#include "gui.h"', '#include "gui.h"\n#include "LocalTools.h"'],
+    ['void AFortPlayerController::ClientOnPawnDiedHook(AFortPlayerController* PlayerController, void* DeathReport)\n{',
+     'void AFortPlayerController::ClientOnPawnDiedHook(AFortPlayerController* PlayerController, void* DeathReport)\n{\n\tif (LocalTools::OnDeath(PlayerController)) return;']
+  ]);
+  edit('commands.cpp', [
+    ['#include "commands.h"', '#include "commands.h"\n#include "LocalTools.h"'],
+    ['\t\tif (Command == "giveitem")',
+     '\t\tif (Command == "local") {\n' +
+     '\t\t\tif (!LocalTools::IsLocal(PlayerController)) { SendMessageToConsole(PlayerController, L"Local tools require a loopback connection."); return; }\n' +
+     '\t\t\tstd::string action = NumArgs ? Arguments[1] : "";\n' +
+     '\t\t\tLocalTools::Action selected = LocalTools::None;\n' +
+     '\t\t\tif (action == "respawn") selected = LocalTools::Respawn;\n' +
+     '\t\t\telse if (action == "heal") selected = LocalTools::Heal;\n' +
+     '\t\t\telse if (action == "loot") selected = LocalTools::Loot;\n' +
+     '\t\t\telse if (action == "kit") selected = LocalTools::Kit;\n' +
+     '\t\t\telse if (action == "materials") selected = LocalTools::Materials;\n' +
+     '\t\t\telse if (action == "ammo") selected = LocalTools::Ammo;\n' +
+     '\t\t\telse if (action == "clearbuilds") selected = LocalTools::ClearBuilds;\n' +
+     '\t\t\tif (selected != LocalTools::None) LocalTools::Execute(PlayerController, selected);\n' +
+     '\t\t\telse if ((action == "infiniteammo" || action == "infinitematerials" || action == "practice") && NumArgs == 2 && (Arguments[2] == "on" || Arguments[2] == "off")) {\n' +
+     '\t\t\t\tbool enabled = Arguments[2] == "on";\n' +
+     '\t\t\t\tif (action == "infiniteammo") LocalTools::InfiniteAmmo.store(enabled);\n' +
+     '\t\t\t\telse if (action == "infinitematerials") LocalTools::InfiniteMaterials.store(enabled);\n' +
+     '\t\t\t\telse LocalTools::PracticeRespawn.store(enabled);\n' +
+     '\t\t\t\tLocalTools::Report(enabled ? "Enabled." : "Disabled.");\n' +
+     '\t\t\t} else { SendMessageToConsole(PlayerController, L"cheat local respawn/heal/loot/kit/materials/ammo/clearbuilds, or infiniteammo/infinitematerials/practice on/off"); return; }\n' +
+     '\t\t\tauto result = LocalTools::ReadStatus();\n' +
+     '\t\t\tSendMessageToConsole(PlayerController, std::wstring(result.begin(), result.end()).c_str());\n' +
+     '\t\t\treturn;\n' +
+     '\t\t}\n' +
+     '\t\tif (Command == "giveitem")']
+  ]);
+}

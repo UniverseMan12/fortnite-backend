@@ -1,8 +1,10 @@
-name: Build server with playlist selection
+name: Build game server
 on:
   push:
     paths:
       - 'scripts/patch-reboot.js'
+      - 'scripts/patch-local-tools.js'
+      - 'server/**'
       - '.github/workflows/build-server.yml'
   workflow_dispatch:
 permissions:
