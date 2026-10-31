@@ -24,6 +24,10 @@ A private Fortnite 4.2 late-game mode with a randomly assigned Thanos role. This
 
 ## Compatibility and testing limits
 
-The launcher and pure respawn/random-selection rules have automated tests. The server DLL must also compile successfully before it is selected in the dependency manifest. A real two-PC VPN match, Thanos transformation/reversion, zone replication and retained-inventory behavior still require in-game playtesting. Compilation does not prove those engine behaviors.
+The pinned DLL is built from `7fa094930fbc015a09a95be3b2febb4872f0ebd7`. [Native build 41252165069](https://github.com/UniverseMan12/fortnite-backend/actions/runs/41252165069) passed compilation and the engine-independent rules tests, including solo reassignment and preference for a different multiplayer contender. The downloaded archive matches GitHub's SHA-256 digest; the DLL matches the included `reboot.sha256` and the dependency manifest.
+
+Earlier manual Fortnite 4.2 testing confirmed bus departure, the larger visible storm wall, Thanos ability icons, survival of Thanos death without a server crash, normal inventory restoration and airborne respawn. A fresh solo test on November 1 with the new DLL also confirmed the original character after Thanos death, airborne respawn with 100 health/100 shield and restored equipment, and successful reassignment to the same solo player after landing. The 20-second threshold and airborne exclusion are covered by native rules tests; the manual test was not a frame-accurate timing measurement. A real two-PC VPN match and multiplayer role rotation remain unverified in game. Compilation and pure-rule tests alone do not prove engine behavior.
+
+The fixed storm timestamps are held approximately 24 hours ahead. The wall and safe area work in the previous manual test, but the HUD can show approximately 1439 minutes; the timer is not hidden or polished.
 
 If the game cannot load the Thanos gadget, apply its abilities, or find the starter weapons, the mode reports a failure in Reboot and the affected player's F8 console. Stop the session and select Classic. This experimental mode does not silently claim a successful transformation when the game's gadget hook reports failure.

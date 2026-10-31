@@ -1,4 +1,36 @@
-# Desktop release checks — 0.3.1
+# Desktop release checks
+
+## 0.4.0-alpha.1 — Infinity Showdown, November 1, 2026
+
+This is an experimental branch build. The stable public release remains **v0.3.1**. No GitHub release was published for this update, and the branch was not merged into `main`.
+
+### Server provenance
+
+- Source: `7fa094930fbc015a09a95be3b2febb4872f0ebd7` on `codex/infinity-showdown`.
+- [Native build 41252165069](https://github.com/UniverseMan12/fortnite-backend/actions/runs/41252165069): successful compilation and native rules tests, including solo fallback and preference for a different contender.
+- Artifact: `13062350035`, `launcher-server`.
+- Archive SHA-256: `b614ede5c851f0a282c3214f85299cfa889a2521296e1bf26785ee15474dc82a`, verified against GitHub artifact metadata before updating the dependency manifest.
+- DLL SHA-256: `0955985cf02d0318b76ee62abde3e4063883de93dfb2aa7fb49a9680a2f7319c`, verified against the artifact's `reboot.sha256`.
+- The previous installed DLL hash is retained in `previousGameServerSha256s` so setup can safely replace it.
+
+### Current validation
+
+- `npm run setup`: passed; installed the new pinned DLL.
+- `npm test`: **28 passed**, run before starting Fortnite.
+- `npm run test:desktop`: **7 passed**.
+- `npm run stage:release`: staged 845 verified payload files. The staged and unpacked DLL hashes match the new pin.
+- `electron-builder --win nsis portable --x64 --publish never`: rebuilt both alpha EXEs successfully with the new pin.
+- Packaged launcher smoke test with Infinity Showdown selected: passed fresh-profile extraction, build detection, first-use preparation, public-host rejection and renderer-error checks.
+- Portable smoke test: passed self-extraction, initial UI/artwork, payload bootstrap, invalid-folder recovery and closing the application.
+- All 845 packaged payload file hashes were checked. Bundled backend profile templates match the pinned public source apart from Windows newlines; no private configuration, session data, logs or Fortnite game files were staged.
+- `dist/SHA256SUMS.txt` and `dist/RELEASE-NOTES.md` were regenerated. The alpha notes link to this branch's QA record.
+- A fresh isolated manual playtest reached the island and the first successful Thanos transformation. The loaded server module was checked against the new DLL hash. After Thanos death, the tester's screenshot shows the original character skydiving with 100 health, 100 shield, restored weapons/consumables and retained materials. The server log records gadget removal and new possession without a crash.
+- Solo reassignment succeeded in that same session: the native log records initial gadget application at 00:34:49, removal/new possession at 00:35:29 and successful application again at 00:36:09 (Europe/Zurich). The 20-second landing threshold is verified by native rules tests; the manual observation was not a frame-accurate timing measurement.
+- Multiplayer preference is covered by native rules tests; a real two-player match has not been performed.
+
+The unsigned installer and portable build are local alpha artifacts. Clean-machine installation/uninstallation remains untested. The storm HUD still has the approximately 1439-minute cosmetic timer. See [INFINITY_SHOWDOWN.md](INFINITY_SHOWDOWN.md) for game behavior and limits.
+
+## Historical stable release — 0.3.1
 
 ## What is included
 
