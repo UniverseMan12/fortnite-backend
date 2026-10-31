@@ -38,6 +38,10 @@ export function patchInfinity(root) {
     ['OnAircraftEnteredDropZoneOriginal(GameModeAthena, Aircraft);\n\n\tif (Globals::bLateGame.load())',
      'OnAircraftEnteredDropZoneOriginal(GameModeAthena, Aircraft);\n\n\tif (Globals::bLateGame.load() && !InfinityShowdown::Enabled.load())']
   ]);
+  edit('FortPlayerControllerAthena.h', [
+    ['if (!CID)\n\t\treturn false;',
+     'if (!CID || !Pawn || !Pawn->IsValidLowLevel() || Pawn->IsActorBeingDestroyed())\n\t\treturn false;']
+  ]);
   edit('gui.h', [
     ['#include "LocalTools.h"','#include "LocalTools.h"\n#include "InfinityShowdown.h"'],
     ['if (ImGui::Button("Solo")) PlaylistName = "/Game/Athena/Playlists/Playlist_DefaultSolo.Playlist_DefaultSolo";',
