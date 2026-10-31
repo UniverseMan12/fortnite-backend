@@ -4,9 +4,9 @@ A launcher for Fortnite 4.2, with local play and private VPN/LAN multiplayer usi
 
 ## Desktop launcher
 
-The **0.3.0 desktop launcher** brings a cinematic island home screen, bold typography, animated session cards and a prominent **Launch Fortnite** button. Choose **Solo / Host / Join**, select your game folder, and let the launcher prepare its components. Setup, live activity, host IPs and **Stop session** remain easy to reach. Reduced-motion preferences are respected. Closing the launcher also stops its owned game processes. The existing CMD launchers remain available.
+The **0.3.1 desktop launcher** brings a Thanos home screen, bold typography, animated session cards and a prominent **Launch Fortnite** button. Choose **Solo / Host / Join**, select your game folder, and let the launcher prepare its components. Setup, live activity, host IPs and **Stop session** remain easy to reach. Reduced-motion preferences are respected. Closing the launcher also stops its owned game processes. The existing CMD launchers remain available.
 
-For the EXE build, choose **Fortnite-Launcher-0.3.0-x64-nsis.exe** to install, or **Fortnite-Launcher-0.3.0-x64-portable.exe** to run without installing. Check the [Releases page](https://github.com/UniverseMan12/fortnite-backend/releases) for published versions; build packages are also produced by the **Build desktop launcher** workflow.
+For the EXE build, choose **Fortnite-Launcher-0.3.1-x64-nsis.exe** to install, or **Fortnite-Launcher-0.3.1-x64-portable.exe** to run without installing. Check the [Releases page](https://github.com/UniverseMan12/fortnite-backend/releases) for published versions; build packages are also produced by the **Build desktop launcher** workflow.
 
 1. Open the launcher and select **Setup → Browse folder**. Choose the folder containing FortniteGame and Engine.
 2. Choose **Solo**, **Host**, or **Join**. Join also needs the host's VPN/LAN IPv4 address.

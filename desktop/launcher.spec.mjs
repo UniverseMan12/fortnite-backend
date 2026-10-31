@@ -9,7 +9,7 @@ test.beforeEach(async () => {
   const env = { ...process.env, LAUNCHER_TEST_DATA: userData }; delete env.ELECTRON_RUN_AS_NODE;
   app = await electron.launch({ args: ['.'], env });
   page = await app.firstWindow();
-  await expect(page.locator('#app-version')).toHaveText('0.3.0');
+  await expect(page.locator('#app-version')).toHaveText('0.3.1');
 });
 test.afterEach(async () => { await app?.close(); fs.rmSync(userData, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 }); });
 
@@ -74,7 +74,7 @@ test('layout fits the minimum window size and keeps primary controls accessible'
 
 test('cinematic artwork, all pages and session controls fit supported window sizes', async () => {
   await expect(page.locator('.hero-art')).toHaveJSProperty('complete', true);
-  expect(await page.locator('.hero-art').evaluate(image => image.naturalWidth)).toBeGreaterThan(1000);
+  expect(await page.locator('.hero-art').evaluate(image => image.naturalWidth)).toBe(1000);
   await page.emulateMedia({ reducedMotion: 'reduce' });
   expect(await page.locator('.rift-particles').evaluate(el => getComputedStyle(el).display)).toBe('none');
   for (const [width, height] of [[940,700],[1200,820],[1440,960]]) {
