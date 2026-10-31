@@ -4,6 +4,8 @@ on:
     paths:
       - 'scripts/patch-reboot.js'
       - 'scripts/patch-local-tools.js'
+      - 'scripts/patch-infinity.js'
+      - 'tests/infinity-rules.cpp'
       - 'server/**'
       - '.github/workflows/build-server.yml'
   workflow_dispatch:
@@ -26,6 +28,14 @@ jobs:
       - name: Apply launcher changes
         run: node scripts/patch-reboot.js upstream
       - uses: microsoft/setup-msbuild@v2
+      - name: Test Infinity Showdown rules
+        shell: cmd
+        run: |
+          call "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\vcvars64.bat"
+          cl /nologo /std:c++20 /EHsc /I server tests\infinity-rules.cpp /Fe:infinity-rules.exe
+          if errorlevel 1 exit /b 1
+          infinity-rules.exe
+          if errorlevel 1 exit /b 1
       - name: Build game server
         run: msbuild "upstream/Project Reboot 3.0.sln" /p:Configuration=Release /p:Platform=x64 /m:2 /verbosity:minimal
       - name: Package server and license

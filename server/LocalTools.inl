@@ -1,5 +1,6 @@
 // Included once by NetDriver.cpp: all Unreal mutations run on its game thread.
 #include "LocalTools.h"
+#include "InfinityShowdown.h"
 #include "LocalToolsCatalog.h"
 #include "FortWeapon.h"
 #include "FortInventory.h"
@@ -19,10 +20,13 @@ namespace LocalTools {
         UObject* address = nullptr;
         FName name;
         TrackedObject() = default;
-        explicit TrackedObject(UObject* object) : index(object->InternalIndex), address(object), name(object->NamePrivate) {
+        explicit TrackedObject(UObject* object) {
+            if (!object) return;
+            index = object->InternalIndex; address = object; name = object->NamePrivate;
             auto slot = GetItemByIndex(index); serial = slot ? slot->SerialNumber : -1;
         }
         UObject* Get() const {
+            if (index < 0 || !address) return nullptr;
             auto slot = GetItemByIndex(index);
             return slot && !slot->IsPendingKill() && slot->SerialNumber == serial && slot->Object == address &&
                 slot->Object && slot->Object->NamePrivate == name ? slot->Object : nullptr;
@@ -89,6 +93,7 @@ namespace LocalTools {
     }
 
     bool OnDeath(AFortPlayerController* controller) {
+        if (InfinityShowdown::Enabled.load()) return InfinityShowdown::OnDeath(controller);
         if (!PracticeRespawn.load() || !IsLocal(controller)) return false;
         auto pawn = controller->GetMyFortPawn();
         if (!pawn || !pawn->IsValidLowLevel()) return false;
@@ -185,6 +190,7 @@ namespace LocalTools {
     }
 
     void Execute(AFortPlayerControllerAthena* controller, Action action, int item, int stack) {
+        if (InfinityShowdown::Enabled.load()) { Report("Practice tools are disabled during Infinity Showdown."); return; }
         if (!IsLocal(controller)) { Report("No local player. Join your match first."); return; }
         if (SessionPlayer.Get() != controller) {
             SessionPlayer = TrackedObject(controller);
@@ -294,6 +300,7 @@ namespace LocalTools {
     }
 
     void Tick(UNetDriver* driver) {
+        if (InfinityShowdown::Enabled.load()) { TakeRequest(); return; }
         if (!Globals::bStartedListening || !driver) return;
         using Clock = std::chrono::steady_clock;
         static auto lastRefill = Clock::now();

@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { patchLocalTools } from './patch-local-tools.js';
+import { patchInfinity } from './patch-infinity.js';
 
 export function fixWarmupAdmission(source) {
   // In 4.2 this gates initial pawn creation, not just the bus countdown.
@@ -76,6 +77,7 @@ export function patchReboot(root) {
   multiplayerUpdate('commands.h',
     'IPStr == "127.0.0.1" || IPStr == "68.134.74.228" || IPStr == "26.66.97.190" || IsOp(PlayerController)',
     'IPStr == "127.0.0.1" || IPStr.rfind("127.0.0.1:", 0) == 0 || IsOp(PlayerController)');
+  patchInfinity(root);
 }
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   if (!process.argv[2]) throw new Error('Pass the pinned Reboot source directory.');
