@@ -14,6 +14,9 @@ int main() {
     assert(landing.Ready(2, true, 200));
     assert(BusSpeed > 0 && BusDropStart < BusDropEnd && BusDropEnd < BusFlightEnd);
     assert((BusDropEnd - BusDropStart) * BusSpeed < ArenaRadius * 2);
+    assert(LargerArena(20000) == 27000);
+    assert(LargerArena(8000) == 15000);
+    assert(LargerArena(-1) == 15000);
     Lives a,b;
     assert(a.Die(100) == Lives::Respawn);
     assert(a.remaining == 9 && a.pending);

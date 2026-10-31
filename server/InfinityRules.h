@@ -3,12 +3,17 @@
 #include <string>
 #include <vector>
 #include <random>
+#include <cmath>
 
 // Engine-independent rules. A life token identifies a pawn, not a death callback.
 namespace InfinityRules {
     constexpr int RespawnLimit = 10;
     constexpr double SelectionDelay = 20.0;
     constexpr float ArenaRadius = 15000.f;
+    inline float LargerArena(float previous) {
+        const float enlarged = std::isfinite(previous) ? previous * 1.35f : 0.f;
+        return enlarged > ArenaRadius ? enlarged : ArenaRadius;
+    }
     constexpr float BusSpeed = 1500.f;
     constexpr float BusDropStart = 1.f, BusDropEnd = 17.f, BusFlightEnd = 23.f;
     struct Landing {

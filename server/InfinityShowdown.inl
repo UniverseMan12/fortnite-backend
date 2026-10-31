@@ -131,7 +131,7 @@ namespace InfinityShowdown {
         // Clients load HUD extensions from their local playlist asset. Mutating
         // Solo's UIExtensions only on the host cannot give clients the Carmine HUD.
         // Replicate the real Carmine asset, retaining Solo gameplay on the server.
-        auto solo = LoadObject<UObject>(L"/Game/Athena/Playlists/Playlist_DefaultSolo.Playlist_DefaultSolo");
+        auto solo = LoadObject<UObject>(L"/Game/Athena/Playlists/Playlist_DefaultSolo.Playlist_DefaultSolo", FindObject<UClass>(L"/Script/FortniteGame.FortPlaylistAthena"));
         if (!playlist || !solo || playlist == solo) { Report("Infinity Showdown: Carmine HUD playlist is unavailable."); return; }
         for (auto name : {"GameData", "LootTierData", "LootPackages", "ResourceRates", "RangedWeapons"}) {
             const int target = playlist->GetOffset(name,false), source = solo->GetOffset(name,false);
@@ -159,19 +159,21 @@ namespace InfinityShowdown {
         auto zone = mode->GetSafeZoneIndicator(); if (!zone || HeldZone.Get() == zone) return;
         auto game = Cast<AFortGameStateAthena>(mode->GetGameState()); if (!game) return;
         const auto center = ArenaCenter(mode, zone->GetActorLocation());
+        const int radiusOffset = zone->GetOffset("NextRadius",false);
+        const float radius = InfinityRules::LargerArena(radiusOffset >= 0 ? zone->Get<float>(radiusOffset) : 0.f);
         for (auto name : {"LastCenter", "NextCenter", "NextNextCenter"}) Put(zone, name, center);
-        for (auto name : {"LastRadius", "NextRadius", "NextNextRadius", "Radius"}) Put(zone, name, InfinityRules::ArenaRadius);
+        for (auto name : {"LastRadius", "NextRadius", "NextNextRadius", "Radius"}) Put(zone, name, radius);
         // Freeze one holding phase. Never repeatedly restart a 0.2-second shrink.
         const float end = game->GetServerWorldTimeSeconds() + 86400.f;
         Put(zone, "SafeZoneStartShrinkTime", end); Put(zone, "SafeZoneFinishShrinkTime", end);
         Put(zone, "bPaused", true); Put(mode, "bSafeZonePaused", true);
         Put(mode, "TimeRemainingWhenPhasePaused", 86400.f);
         if (auto fn = zone->FindFunction("SetSafeZoneRadiusAndCenter")) {
-            struct { float radius; FVector center; } params{InfinityRules::ArenaRadius, center};
+            struct { float radius; FVector center; } params{radius, center};
             zone->ProcessEvent(fn, &params);
         }
         zone->ForceNetUpdate(); game->ForceNetUpdate(); HeldZone = Ref(zone);
-        LOG_INFO(LogDev, "Infinity Showdown: fixed arena radius {} cm", InfinityRules::ArenaRadius);
+        LOG_INFO(LogDev, "Infinity Showdown: fixed arena radius {} cm", radius);
     }
     static void TickBus(AFortGameModeAthena* mode, AFortGameStateAthena* game, double now) {
         if (BusRequested.exchange(false) && !BusStarted && game->GetGamePhase() < EAthenaGamePhase::Aircraft) {
@@ -345,7 +347,7 @@ namespace InfinityShowdown {
             }
             auto pawn = controller->GetMyFortPawn(); auto state = Cast<AFortPlayerStateAthena>(controller->GetPlayerState());
             if (!pawn || !pawn->IsValidLowLevel() || pawn->IsActorBeingDestroyed() || pawn->GetHealth() <= 0 || pawn->IsDBNO() || !state || state->IsInAircraft()) continue;
-            if (game->GetGamePhase() < EAthenaGamePhase::SafeZones) continue;
+            if (game->GetGamePhase() < EAthenaGamePhase::Aircraft) continue;
             if (!player.kit) {
                 if (!AddKit(controller)) { Faulted = true; Broadcast("Infinity Showdown could not find the starter weapons. Stop this session and use Classic."); return; }
                 player.kit = true; LocalTools::RestoreHealth(pawn);
