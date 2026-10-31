@@ -1,0 +1,14 @@
+/vendor/
+/research/
+/runtime/
+/logs/
+/data/
+/config.local.json
+/node_modules/
+*.log
+*.dmp
+*.pdb
+*.exe
+*.dll
+*.zip
+.env*
