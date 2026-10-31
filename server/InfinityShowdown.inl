@@ -58,6 +58,13 @@ namespace InfinityShowdown {
         return saved;
     }
     static void RemoveInventory(AFortInventory* inventory) {
+        // Unequipping this gadget can add a pickaxe. Remove it before taking the
+        // snapshot below so that the automatically added item is cleared too.
+        if (auto gadget = inventory->FindItemInstance(Gauntlet())) {
+            auto entry = gadget->GetItemEntry();
+            const auto guid = entry->GetItemGuid(); const int count = entry->GetCount();
+            inventory->RemoveItem(guid, nullptr, count, true);
+        }
         std::vector<std::pair<FGuid,int>> remove;
         auto& items = inventory->GetItemList().GetItemInstances();
         for (int i = 0; i < items.Num(); ++i) if (auto item = items.at(i))
@@ -117,7 +124,9 @@ namespace InfinityShowdown {
         const int impact = FindOffsetStruct("/Script/Engine.HitResult", "ImpactPoint");
         if (context < 0 || start < 0 || end < 0 || trace < 0 || hit < 0 || result < 0 || impact < 0) return false;
         std::vector<uint8_t> params(fn->GetPropertiesSize(),0);
-        if (hit + impact + sizeof(FVector) > params.size()) return false;
+        if (context + sizeof(UObject*) > params.size() || start + sizeof(FVector) > params.size()
+            || end + sizeof(FVector) > params.size() || size_t(trace) >= params.size()
+            || size_t(result) >= params.size() || hit + impact + sizeof(FVector) > params.size()) return false;
         auto from = location, to = location; from.Z = 100000; to.Z = -100000;
         *reinterpret_cast<UObject**>(params.data()+context) = GetWorld();
         *reinterpret_cast<FVector*>(params.data()+start) = from; *reinterpret_cast<FVector*>(params.data()+end) = to;
@@ -233,8 +242,9 @@ namespace InfinityShowdown {
         Assigning = controller; AssigningDefinition = gauntlet; AssignmentSucceeded = false;
         inventory->AddItem(gauntlet,nullptr,1); inventory->Update(); Assigning = nullptr; AssigningDefinition = nullptr;
         if (!AssignmentSucceeded || !inventory->FindItemInstance(gauntlet)) {
-            RestoreEquipment(controller,player); Faulted = true;
-            Broadcast("Infinity Showdown: Thanos transformation failed. Equipment restored; restart with Classic."); return;
+            const bool restored = RestoreEquipment(controller,player); Faulted = true;
+            Broadcast(restored ? "Infinity Showdown: Thanos transformation failed. Equipment restored; restart with Classic."
+                : "Infinity Showdown: transformation and equipment restore failed. Stop this session; see the server log."); return;
         }
         player.transformed = true; Thanos = selected;
         Broadcast("Infinity Showdown: " + selected + " is Thanos! Each player has up to 10 respawns.");
