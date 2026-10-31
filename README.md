@@ -108,5 +108,5 @@ LawinServer V1 is a local single-user emulator with shared profile data, not a s
 ## Contributors and credits
 
 - **[UniverseMan12](https://github.com/UniverseMan12)** - project owner, requirements and local testing.
-- **OpenAI Codex (AI assistant)** - assisted implementation, debugging, tests and English documentation. This is an AI assistance credit, not a separate GitHub collaborator account.
+- **OpenAI Codex (AI assistant)** - assisted implementation, debugging, tests.
 - **LawinServer and Project Reboot contributors** - upstream backend, game server and runtime components. See [THIRD_PARTY.md](THIRD_PARTY.md) for attribution and licenses.
