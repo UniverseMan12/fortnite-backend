@@ -15,6 +15,7 @@ The installer does not contain Fortnite game files, personal configuration, loca
 - 5 desktop UI tests: navigation and mode selection, invalid paths/retry, isolated renderer, bounded external links, overlapping start rejection, immediate cancellation and minimum-window layout.
 - Packaged EXE with a fresh user-data directory: payload extraction, build detection, first-use component download, rejection of a public host IP, no renderer script errors.
 - Packaged EXE with the local Fortnite 4.2 installation: starts the real backend and game-server helper, reaches Reboot playlist settings, then stops the session through the launcher.
+- Portable EXE: self-extraction, initial UI, verified payload bootstrap, invalid-folder recovery and closing the application.
 - The owner previously confirmed successful 4.2 island entry after the multiplayer warmup fix.
 
 Tests cover the stated scenarios, not every possible bug. A full two-PC Hamachi match through this GUI and installation/uninstallation on a clean Windows VM have not been verified. Server-side practice tools and Thanos retain their existing compatibility limits.
@@ -43,6 +44,7 @@ npm ci
 npm run setup
 npm run package:release
 node scripts/smoke-release.mjs
+node scripts/smoke-portable.mjs
 node scripts/release-files.mjs
 ```
 

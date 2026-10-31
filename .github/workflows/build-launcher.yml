@@ -26,6 +26,7 @@ jobs:
       - run: npm run setup
       - run: npm run package:release
       - run: node scripts/smoke-release.mjs
+      - run: node scripts/smoke-portable.mjs
       - run: node scripts/release-files.mjs
       - uses: actions/upload-artifact@v4
         with:
