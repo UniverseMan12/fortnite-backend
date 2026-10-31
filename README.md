@@ -1,6 +1,6 @@
 # Fortnite Backend
 
-An English Windows launcher for a local Fortnite legacy setup. It uses **LawinServer** for the backend and components from the **Project Reboot ecosystem** for the game server and console.
+An Windows launcher for a local Fortnite legacy setup. It uses **LawinServer** for the backend and components from the **Project Reboot ecosystem** for the game server and console.
 
 ## Start here
 
