@@ -47,10 +47,37 @@ namespace LocalTools {
         SpawnedLootCount.store(static_cast<int>(SpawnedLoot.size()));
         return true;
     }
-    static void RestoreHealth(AFortPawn* pawn) {
-        if (pawn->GetHealth() < 100) pawn->SetHealth(100);
-        if (pawn->GetShield() < 100) pawn->SetShield(100);
+    static bool RestoreShield(AFortPawn* pawn) {
+        if (pawn->GetShield() >= 100) return true;
+        if (auto setter = pawn->FindFunction("SetShield")) {
+            float shield = 100; pawn->ProcessEvent(setter, &shield);
+        } else {
+            // 4.2 has GetShield/SetMaxShield but no SetShield UFunction.
+            // Use its reflected health attribute set and replication notification.
+            auto offset = pawn->GetOffset("AbilitySystemComponent", false);
+            auto asc = offset == -1 ? nullptr : pawn->Get<UAbilitySystemComponent*>(offset);
+            auto healthClass = FindObject<UClass>(L"/Script/FortniteGame.FortHealthSet");
+            if (!asc || !healthClass) return false;
+            auto& attributes = asc->GetSpawnedAttributes();
+            for (int i = 0; i < attributes.Num(); ++i) {
+                auto attribute = attributes.at(i);
+                if (!attribute || !attribute->IsA(healthClass)) continue;
+                auto currentOffset = attribute->GetOffset("CurrentShield", false);
+                if (currentOffset == -1) continue;
+                auto shield = attribute->GetPtr<FGameplayAttributeData>(currentOffset);
+                shield->GetBaseValue() = 100; shield->GetCurrentValue() = 100;
+                if (auto notify = attribute->FindFunction("OnRep_CurrentShield")) attribute->ProcessEvent(notify);
+                break;
+            }
+        }
         pawn->ForceNetUpdate();
+        return pawn->GetShield() >= 99.9f;
+    }
+    static bool RestoreHealth(AFortPawn* pawn) {
+        if (pawn->GetHealth() < 100) pawn->SetHealth(100);
+        bool shield = RestoreShield(pawn);
+        pawn->ForceNetUpdate();
+        return shield && pawn->GetHealth() >= 99.9f;
     }
 
     bool IsLocal(AFortPlayerController* controller) {
@@ -145,7 +172,7 @@ namespace LocalTools {
         pawn->SetOwner(controller);
         controller->Possess(pawn);
         pawn->SetMaxHealth(100); pawn->SetHealth(100);
-        pawn->SetMaxShield(100); pawn->SetShield(100);
+        pawn->SetMaxShield(100); bool shieldRestored = RestoreShield(pawn);
         controller->SetPlayerIsWaiting(false);
         controller->ClientClearDeathNotification();
         controller->RespawnPlayerAfterDeath(false);
@@ -153,7 +180,7 @@ namespace LocalTools {
         pawn->ForceNetUpdate();
         if (oldPawn && oldPawn != pawn && oldPawn->IsValidLowLevel() && !oldPawn->IsActorBeingDestroyed()) oldPawn->K2_DestroyActor();
         DeadControllerIndex = -1; HasDeathLocation = false;
-        Report("Respawned with 100 health and shield.");
+        Report(shieldRestored ? "Respawned with 100 health and shield." : "Respawned. Shield restoration is unavailable in this build.");
         return true;
     }
 
@@ -221,8 +248,7 @@ namespace LocalTools {
             Report("Removed " + std::to_string(count) + " player builds. Map structures kept.");
         } else if (action == Heal) {
             if (pawn->IsDBNO()) { Report("Respawn or get revived before healing."); return; }
-            RestoreHealth(pawn);
-            Report("Health and shield restored.");
+            Report(RestoreHealth(pawn) ? "Health and shield restored." : "Health restored; shield restoration is unavailable in this build.");
         } else if (action == Materials || action == Ammo) {
             int count = TopUp(controller, action == Materials);
             if (action == Ammo) RefillMagazine(controller);
