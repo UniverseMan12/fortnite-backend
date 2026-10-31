@@ -32,4 +32,6 @@ The fixed storm timestamps are held approximately 24 hours ahead. The wall and s
 
 Follow-up from the same solo test: the restored skin still had stretched body proportions. Skin visibility alone did not establish complete cosmetic restoration. The next source revision saves the original six character-part slots, body type, gender and animation override before transformation, restores PlayerState before spawning, and refreshes the newly possessed pawn. Its native build and in-game proportions check are pending; the currently pinned DLL does not contain this follow-up.
 
+The tester also reported being able to jump before the countdown while the late-game arena appeared only at the end of the drop window. The follow-up source initializes the arena during departure and gates the native jump RPC on arena readiness, the drop-start time and actual aircraft membership. Forced end-of-route ejection remains allowed. These changes need a new DLL and in-game regression check too.
+
 If the game cannot load the Thanos gadget, apply its abilities, or find the starter weapons, the mode reports a failure in Reboot and the affected player's F8 console. Stop the session and select Classic. This experimental mode does not silently claim a successful transformation when the game's gadget hook reports failure.

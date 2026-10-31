@@ -14,6 +14,15 @@ int main() {
     assert(landing.Ready(2, true, 200));
     assert(BusSpeed > 0 && BusDropStart < BusDropEnd && BusDropEnd < BusFlightEnd);
     assert((BusDropEnd - BusDropStart) * BusSpeed < ArenaRadius * 2);
+    assert(!CanLeaveBus(false, true, true, 5));
+    assert(!CanLeaveBus(true, false, true, 5)); // No exit into an uninitialized arena.
+    assert(!CanLeaveBus(true, true, false, 5)); // Repeated RPC after exiting.
+    assert(!CanLeaveBus(true, true, true, -1));
+    assert(!CanLeaveBus(true, true, true, BusDropStart - .01));
+    assert(CanLeaveBus(true, true, true, BusDropStart));
+    assert(CanLeaveBus(true, true, true, BusDropEnd));
+    assert(CanLeaveBus(true, true, true, BusFlightEnd)); // Forced native ejection.
+    assert(!CanLeaveBus(true, true, true, NAN));
     assert(LargerArena(20000) == 27000);
     assert(LargerArena(8000) == 15000);
     assert(LargerArena(-1) == 15000);

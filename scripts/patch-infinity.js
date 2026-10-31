@@ -25,6 +25,8 @@ export function patchInfinity(root) {
   ]);
   edit('FortPlayerController.cpp', [
     ['#include "LocalTools.h"','#include "LocalTools.h"\n#include "InfinityShowdown.h"'],
+    ['\tif (Engine_Version < 424 && !Globals::bLateGame.load())',
+     '\tif (InfinityShowdown::Enabled.load()) {\n\t\tif (!InfinityShowdown::CanJumpFromBus(PlayerController)) return;\n\t\treturn ServerAttemptAircraftJumpOriginal(PC, ClientRotation);\n\t}\n\n\tif (Engine_Version < 424 && !Globals::bLateGame.load())'],
     ['bool bDropInventory = true;','bool bDropInventory = !InfinityShowdown::Enabled.load();']
   ]);
   edit('extra.cpp', [

@@ -17,6 +17,10 @@ namespace InfinityRules {
     }
     constexpr float BusSpeed = 1500.f;
     constexpr float BusDropStart = 1.f, BusDropEnd = 17.f, BusFlightEnd = 23.f;
+    inline bool CanLeaveBus(bool configured, bool arenaReady, bool inAircraft, double elapsed) {
+        // Native end-of-route ejection must still work after the drop window.
+        return configured && arenaReady && inAircraft && std::isfinite(elapsed) && elapsed >= BusDropStart;
+    }
     struct Landing {
         uint64_t pawn = 0;
         double landedAt = -1;

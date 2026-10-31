@@ -5,6 +5,8 @@
 #include <random>
 #include <cmath>
 
+void SetZoneToIndexHook(AFortGameModeAthena* mode, int phase);
+
 namespace InfinityShowdown {
     using Ref = LocalTools::TrackedObject;
     struct SavedItem { Ref definition; int count = 0, ammo = -1; std::string path; };
@@ -292,10 +294,23 @@ namespace InfinityShowdown {
             }
             if (Buses.empty()) return;
             BusConfigured = BusStarted = true; BusStartedAt = now;
-            Put(game,"AircraftStartTime",float(now)); Put(game,"SafeZonesStartTime",float(now)+InfinityRules::BusDropEnd);
+            Put(game,"AircraftStartTime",float(now)); Put(game,"SafeZonesStartTime",float(now));
+            // Initialize the fixed arena during departure, not after the last
+            // passenger exits. The jump RPC stays blocked until HoldZone has
+            // finished and the replicated drop-start time has been reached.
+            SetZoneToIndexHook(mode, 0); HoldZone(mode);
             game->ForceNetUpdate(); Report("Battle Bus departing. Thanos selection starts 20 seconds after landing.");
         }
         if (!BusConfigured) return;
+        const bool locked = !InfinityRules::CanLeaveBus(true, HeldZone.Get() != nullptr, true, now - BusStartedAt);
+        const int lockOffset = game->GetOffset("bAircraftIsLocked", false);
+        auto lockProperty = game->GetProperty("bAircraftIsLocked", false);
+        if (lockOffset >= 0 && lockProperty) {
+            const auto mask = GetFieldMask(lockProperty);
+            if (game->ReadBitfieldValue(lockOffset, mask) != locked) {
+                game->SetBitfieldValue(lockOffset, mask, locked); game->ForceNetUpdate();
+            }
+        }
         if (!BusExited && now >= BusStartedAt + InfinityRules::BusDropEnd + 1) {
             BusExited = true;
             // Normal aircraft timing handles this first; this is a one-shot fallback.
@@ -314,6 +329,14 @@ namespace InfinityShowdown {
             }
         }
         Buses.clear();
+    }
+    bool CanJumpFromBus(AFortPlayerController* controller) {
+        auto world = GetWorld();
+        auto game = world ? Cast<AFortGameStateAthena>(world->GetGameState()) : nullptr;
+        auto state = controller ? Cast<AFortPlayerStateAthena>(controller->GetPlayerState()) : nullptr;
+        return !Faulted && game && state && game->GetGamePhase() != EAthenaGamePhase::EndGame &&
+            InfinityRules::CanLeaveBus(BusConfigured, HeldZone.Get() != nullptr, state->IsInAircraft(),
+                game->GetServerWorldTimeSeconds() - BusStartedAt);
     }
     static bool OnGround(AFortPawn* pawn) {
         const int offset = pawn->GetOffset("CharacterMovement", false); if (offset < 0) return false;

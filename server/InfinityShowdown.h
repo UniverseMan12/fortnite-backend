@@ -15,6 +15,7 @@ namespace InfinityShowdown {
     inline void Report(const std::string& value) { std::lock_guard<std::mutex> lock(InfoMutex); Info = value; }
     inline std::string ReadInfo() { std::lock_guard<std::mutex> lock(InfoMutex); return Info; }
     bool OnDeath(AFortPlayerController* controller);
+    bool CanJumpFromBus(AFortPlayerController* controller);
     void Tick(UNetDriver* driver);
     void GadgetApplied(AFortPlayerController* controller, UFortItemDefinition* definition, bool success);
     bool BeginZone(AFortGameModeAthena* mode);
