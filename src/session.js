@@ -10,22 +10,27 @@ export async function runSession({ startBackend, startGame, status = () => {}, s
   let backend, backendExit;
   try {
     if (signal?.aborted) throw new Error('Startup cancelled.');
-    status('Starting backend...');
+    status('Starting backend...', 'pending');
     // Do not race acquisition: resources must be registered even if cancelled midway.
     backend = await startBackend(); resources.push(backend);
     backendExit = () => rejectFailure(new Error('Backend stopped. See logs/backend.log.'));
     backend.child.once('exit', backendExit);
     if (backend.child.exitCode !== null || signal?.aborted) throw new Error('Backend stopped or startup was cancelled.');
-    status('Starting local server...');
-    const server = startGame('server'); resources.push(server);
+    status('Backend ready', 'ok');
+    status('Opening server settings...', 'pending');
+    const server = startGame('server', phase => {
+      if (phase === 'configure') status('Choose a playlist in Reboot, then click Start server.', 'info');
+      if (phase === 'starting') status('Starting local server...', 'pending');
+    }); resources.push(server);
     server.closed.then(() => rejectFailure(new Error('Game server stopped. See logs/server-helper.log.')));
     await Promise.race([server.ready, failure]);
     if (signal?.aborted) throw new Error('Startup cancelled.');
-    status('Starting Fortnite...');
+    status('Server listening', 'ok');
+    status('Starting Fortnite...', 'pending');
     const client = startGame('client'); resources.push(client);
     await Promise.race([client.ready, failure]);
-    status('Fortnite is open. Press Play in the lobby.');
-    status('Keep this window open. Ctrl+C stops everything.');
+    status('Fortnite ready. Press Play in the lobby.', 'ok');
+    status('Keep this window open. Ctrl+C stops everything.', 'info');
     const result = await Promise.race([client.closed, failure]);
     if (result.code !== 0) throw new Error('Fortnite stopped unexpectedly. See logs/client-helper.log.');
   } finally {

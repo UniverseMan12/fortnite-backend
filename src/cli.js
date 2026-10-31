@@ -5,6 +5,7 @@ import { setup, verifyDll } from '../scripts/setup.js';
 import { startBackend } from './backend.js';
 import { startGame } from './game.js';
 import { runSession } from './session.js';
+import { folderPrompt, showStatus } from './status.js';
 
 const controller = new AbortController();
 let rl;
@@ -37,24 +38,24 @@ async function main() {
     let config;
     try {
       while (!config && !controller.signal.aborted) {
-        const prompt = 'Folder containing FortniteGame and Engine' + (old.gamePath ? ' [' + old.gamePath + ']' : '') + ': ';
-        const answer = await rl.question(prompt, { signal: controller.signal });
-        try { config = prepareConfig(answer.trim() || old.gamePath, old); }
-        catch (error) { console.error(error.message); }
+        const answer = await rl.question(folderPrompt, { signal: controller.signal });
+        try { config = prepareConfig(answer.trim(), old); }
+        catch (error) { showStatus(error.message, 'error'); }
       }
     } finally { rl.close(); rl = undefined; }
     if (!config || controller.signal.aborted) return;
     saveConfig(config);
-    console.log('Fortnite ' + config.version + ' detected.');
-    if (process.argv.includes('--check')) { console.log('Folder checked.'); return; }
+    showStatus('Fortnite ' + config.version, 'ok');
+    if (process.argv.includes('--check')) return;
   }
-  console.log('Preparing components...');
+  showStatus('Preparing components...', 'pending');
   await setup({ withGame: !backendOnly, quiet: true });
+  showStatus('Components ready', 'ok');
   if (controller.signal.aborted) return;
   if (backendOnly) {
     const backend = await startBackend();
     try {
-      console.log('Backend running. Ctrl+C stops it.');
+      showStatus('Backend ready. Ctrl+C stops it.', 'ok');
       if (!controller.signal.aborted && backend.child.exitCode === null) {
         await once(backend.child, 'exit', { signal: controller.signal });
       }
@@ -62,11 +63,11 @@ async function main() {
     } finally { await backend.stop(); }
     return;
   }
-  await runSession({ startBackend, startGame, status: console.log, signal: controller.signal });
+  await runSession({ startBackend, startGame, status: showStatus, signal: controller.signal });
 }
 main().catch(error => {
   if (!controller.signal.aborted) {
-    console.error('\n' + error.message);
+    showStatus(error.message, 'error');
     process.exitCode = 1;
   }
 }).finally(() => {

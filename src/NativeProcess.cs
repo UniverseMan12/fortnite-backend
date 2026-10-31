@@ -4,6 +4,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Runtime.InteropServices;
 using System.Text;
+using System.Collections.Generic;
 
 // Owns only processes launched by this helper. Closing the helper closes this job.
 public sealed class LocalGameSession : IDisposable
@@ -34,6 +35,12 @@ public sealed class LocalGameSession : IDisposable
     [DllImport("kernel32.dll", SetLastError=true)] static extern uint WaitForSingleObject(IntPtr handle, uint milliseconds);
     [DllImport("kernel32.dll", SetLastError=true)] static extern bool GetExitCodeThread(IntPtr thread, out uint code);
     [DllImport("kernel32.dll")] static extern bool CloseHandle(IntPtr handle);
+    delegate bool WindowCallback(IntPtr window, IntPtr parameter);
+    [DllImport("user32.dll")] static extern bool EnumWindows(WindowCallback callback, IntPtr parameter);
+    [DllImport("user32.dll")] static extern uint GetWindowThreadProcessId(IntPtr window, out uint pid);
+    [DllImport("user32.dll", CharSet=CharSet.Unicode)] static extern int GetClassName(IntPtr window, StringBuilder name, int count);
+    [DllImport("user32.dll")] static extern bool ShowWindow(IntPtr window, int command);
+    readonly HashSet<int> owned = new HashSet<int>();
     IntPtr job;
     static Exception Error(string operation) { return new Win32Exception(Marshal.GetLastWin32Error(), operation); }
     public LocalGameSession() {
@@ -44,15 +51,31 @@ public sealed class LocalGameSession : IDisposable
         if (!SetInformationJobObject(job, 9, ref limits, (uint)Marshal.SizeOf(limits))) { var e=Error("SetInformationJobObject"); Dispose(); throw e; }
     }
     public int Start(string executable, string arguments, bool leaveSuspended, string workingDirectory) {
+        return Start(executable, arguments, leaveSuspended, workingDirectory, false);
+    }
+    public int Start(string executable, string arguments, bool leaveSuspended, string workingDirectory, bool hideWindow) {
         var startup = new StartupInfo(); startup.cb = Marshal.SizeOf(startup);
+        if (hideWindow) { startup.flags = 1; startup.show = 0; }
         ProcessInfo info;
         var command = new StringBuilder("\"" + executable + "\" " + arguments);
         if (!CreateProcess(executable, command, IntPtr.Zero, IntPtr.Zero, false, 4, IntPtr.Zero, workingDirectory, ref startup, out info)) throw Error("CreateProcess");
         try {
             if (!AssignProcessToJobObject(job, info.process)) { TerminateProcess(info.process,1); throw Error("AssignProcessToJobObject"); }
             if (!leaveSuspended && ResumeThread(info.thread) == 0xffffffff) { TerminateProcess(info.process,1); throw Error("ResumeThread"); }
-            return info.pid;
+            owned.Add(info.pid); return info.pid;
         } finally { CloseHandle(info.thread); CloseHandle(info.process); }
+    }
+    // Only the owned host's Unreal viewport is hidden. Reboot's settings use another class.
+    public void HideServerViewport(int pid) {
+        if (!owned.Contains(pid)) throw new InvalidOperationException("Process is not owned by this session.");
+        EnumWindows(delegate(IntPtr window, IntPtr parameter) {
+            uint windowPid; GetWindowThreadProcessId(window, out windowPid);
+            if (windowPid == (uint)pid) {
+                var name = new StringBuilder(256); GetClassName(window, name, name.Capacity);
+                if (name.ToString() == "UnrealWindow") ShowWindow(window, 0);
+            }
+            return true;
+        }, IntPtr.Zero);
     }
     public void LoadLibrary(int pid, string file) {
         if (!File.Exists(file)) throw new FileNotFoundException(file);

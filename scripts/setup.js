@@ -56,7 +56,14 @@ export async function setup({ withGame = true, quiet = false } = {}) {
       }
       verifyDll(name);
     }
-    if (!fs.existsSync(path.join(ROOT, 'runtime', 'reboot.dll'))) {
+    const serverDll = path.join(ROOT, 'runtime', 'reboot.dll');
+    let replaceServer = !fs.existsSync(serverDll);
+    if (!replaceServer) {
+      const current = crypto.createHash('sha256').update(fs.readFileSync(serverDll)).digest('hex');
+      replaceServer = current !== lock.dlls['reboot.dll'] && current === lock.previousGameServerSha256;
+      if (current !== lock.dlls['reboot.dll'] && !replaceServer) verifyDll('reboot.dll');
+    }
+    if (replaceServer) {
       if (!quiet) console.log('Downloading the pinned Reboot game server...');
       const archive = path.join(ROOT, 'runtime', 'reboot.zip');
       await download(lock.gameServerArchive, archive);

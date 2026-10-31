@@ -1,5 +1,6 @@
 @echo off
 setlocal
+chcp 65001 >nul
 cd /d "%~dp0"
 title Fortnite Launcher
 where node >nul 2>nul

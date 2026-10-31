@@ -5,6 +5,7 @@ Import-Module "$PSHOME\Modules\Microsoft.PowerShell.Utility\Microsoft.PowerShell
 $projectRoot = Split-Path $PSScriptRoot -Parent
 $session = $null
 $logReader = $null
+$signalDirectory = $null
 try {
     if (-not [Environment]::Is64BitProcess) { throw 'Please use 64-bit PowerShell.' }
     $config = Get-Content -LiteralPath (Join-Path $projectRoot 'config.local.json') -Raw | ConvertFrom-Json
@@ -34,6 +35,11 @@ try {
     $env:OPENSSL_ia32cap = '~0x20000000'
     $working = Join-Path $projectRoot "data\$Mode"
     New-Item -ItemType Directory -Force -Path $working | Out-Null
+    if ($Mode -eq 'server') {
+        $signalDirectory = Join-Path $working ([Guid]::NewGuid().ToString('N'))
+        New-Item -ItemType Directory -Path $signalDirectory | Out-Null
+        $env:FORTNITE_LAUNCHER_SIGNALS = $signalDirectory
+    }
     # The two presence processes remain suspended: their anti-cheat code is not executed.
     foreach ($name in @('FortniteLauncher.exe','FortniteClient-Win64-Shipping_EAC.exe')) {
         $file = Join-Path $binaries $name
@@ -43,9 +49,9 @@ try {
     $playerName = $config.username
     if ($Mode -eq 'server') { $playerName = 'LocalHost' }
     $arguments = '-epicapp=Fortnite -epicenv=Prod -epiclocale=en-us -epicportal -skippatchcheck -nobe -AUTH_TYPE=epic -AUTH_LOGIN=' + $playerName + '@local.invalid -AUTH_PASSWORD=LocalOnly -log -forcelogflush -ABSLOG="' + $log + '"'
-    if ($Mode -eq 'server') { $arguments += ' -nosplash -nosound -nullrhi -port=7777 -MULTIHOME=127.0.0.1' }
+    if ($Mode -eq 'server') { $arguments += ' -nosplash -nosound -nullrhi -windowed -port=7777 -MULTIHOME=127.0.0.1' }
     else { $arguments += ' -windowed -ResX=1280 -ResY=720' }
-    $gameId = $session.Start($exe, $arguments, $false, $working)
+    $gameId = $session.Start($exe, $arguments, $false, $working, ($Mode -eq 'server'))
     Write-Output "[$Mode] Fortnite started (PID $gameId). Connecting to the local backend..."
     $session.LoadLibrary($gameId, (Join-Path $projectRoot 'runtime\sinum.dll'))
     $game = Get-Process -Id $gameId
@@ -54,6 +60,7 @@ try {
     $actualLog = $log
     $carry = ''
     while ((Get-Date) -lt $deadline) {
+        if ($Mode -eq 'server') { $session.HideServerViewport($gameId) }
         $game.Refresh()
         if ($game.HasExited) { throw "Fortnite exited before login completed. Log: $log" }
         # Some Shipping builds ignore ABSLOG. Identify their default log by this
@@ -86,10 +93,29 @@ try {
     $session.LoadLibrary($gameId, (Join-Path $projectRoot 'runtime\memory.dll'))
     if ($Mode -eq 'server') {
         $session.LoadLibrary($gameId, (Join-Path $projectRoot 'runtime\reboot.dll'))
-        Write-Output '[server] Reboot loaded. Wait for Joinable: true in the Reboot window before joining.'
+        $settingsFlag = Join-Path $signalDirectory 'server-settings.flag'
+        $startFlag = Join-Path $signalDirectory 'server-started.flag'
+        $deadline = (Get-Date).AddSeconds(60)
+        while (-not (Test-Path -LiteralPath $settingsFlag)) {
+            $session.HideServerViewport($gameId)
+            $game.Refresh()
+            if ($game.HasExited) { throw 'Game server exited before opening settings.' }
+            if ((Get-Date) -gt $deadline) { throw 'Reboot settings did not open. Check the pinned server build.' }
+            Start-Sleep -Milliseconds 400
+        }
+        Write-Output 'LAUNCHER_CONFIGURE:server'
+        # The user can take as long as needed to choose a playlist.
+        while (-not (Test-Path -LiteralPath $startFlag)) {
+            $session.HideServerViewport($gameId)
+            $game.Refresh()
+            if ($game.HasExited) { throw 'Game server closed during playlist selection.' }
+            Start-Sleep -Milliseconds 400
+        }
+        Write-Output 'LAUNCHER_STARTING:server'
         $deadline = (Get-Date).AddMinutes(2)
         $listening = $false
         while ((Get-Date) -lt $deadline) {
+            $session.HideServerViewport($gameId)
             $game.Refresh()
             if ($game.HasExited) { throw 'Game server exited before opening its game port.' }
             $endpoint = Get-NetUDPEndpoint -LocalPort 7777 -ErrorAction SilentlyContinue | Where-Object { $_.OwningProcess -eq $gameId }
@@ -104,7 +130,9 @@ try {
         Write-Output '[client] Console loaded. Once the host is ready: press F8, type open 127.0.0.1:7777, press Enter.'
         Write-Output 'LAUNCHER_READY:client'
     }
-    $game.WaitForExit()
+    if ($Mode -eq 'server') {
+        while (-not $game.WaitForExit(500)) { $session.HideServerViewport($gameId) }
+    } else { $game.WaitForExit() }
 } catch {
     [Console]::Error.WriteLine("[$Mode] " + $_.Exception.Message)
     exit 1

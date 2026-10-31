@@ -6,9 +6,14 @@ A launcher for a local Fortnite legacy setup, using **LawinServer** and componen
 
 1. Open **START.cmd**.
 2. Paste the folder containing **FortniteGame** and **Engine**, then press **Enter**.
-3. Wait for Fortnite to open, then press **Play** in the lobby. Keep the launcher window open.
+3. In **Project Reboot**, choose **Solo** or **Thanos (experimental)** and click **Start server**. There is no countdown.
+4. Wait for Fortnite to open, then press **Play** in the lobby. Keep the launcher and Reboot windows open.
 
-That is the only setup question. The launcher detects the build, prepares components, starts the backend and local host, and opens Fortnite after the host opens its game port. Your folder is remembered; next time, press Enter to reuse it. Press **Ctrl+C** in the launcher to stop the session.
+The command prompt asks only for the folder, without showing a saved personal path. Green checkmarks mean a step completed, yellow dots mean startup is in progress, and red crosses indicate errors. The launcher detects the build, prepares components and opens Fortnite after you start the host. Press **Ctrl+C** in the launcher to stop the session.
+
+The host runs a separate Fortnite process. Its unused Unreal game window is hidden. Reboot's playlist selection remains open until you click **Start server**, even if you take several minutes. Restart the launcher to change the playlist after the server has started.
+
+**Thanos is experimental:** the preset selects the Carmine playlist and checks that the asset exists. It does not guarantee that the Infinity Gauntlet, abilities or complete match rules work in this server implementation.
 
 ```text
 Folder you select/
@@ -60,9 +65,9 @@ npm test                   # Validation, startup coordination and backend tests
 
 Settings are stored in config.local.json. The player name defaults to Player; an existing valid name is preserved. Build identification uses embedded release strings rather than a manually entered version.
 
-The coordinator waits for backend HTTP/XMPP readiness and then for UDP port 7777 owned by its host process. It closes its processes on startup failure, client exit or Ctrl+C. Automated orchestration tests simulate readiness, failure and cancellation; they do not verify an actual match.
+The coordinator waits for backend HTTP/XMPP readiness, the user's Start server action, and then UDP port 7777 owned by its host process. Private per-session marker files connect the Reboot settings UI to the launcher. There is no timeout while choosing a playlist; login and server startup still have time limits. It closes its processes on startup failure, client exit or Ctrl+C. Automated orchestration tests cover readiness, failure and cancellation.
 
-HTTP backend: http://127.0.0.1:3551. XMPP/matchmaker: 127.0.0.1:80. Game target: 127.0.0.1:7777 over UDP. HTTP and XMPP bind to loopback. The host receives -MULTIHOME=127.0.0.1; its actual binding still needs live verification. No firewall rules, hosts-file entries or system certificates are changed.
+HTTP backend: http://127.0.0.1:3551. XMPP/matchmaker: 127.0.0.1:80. Game target: 127.0.0.1:7777 over UDP. HTTP and XMPP bind to loopback. In the 4.2 test, Reboot listened on 0.0.0.0:7777 despite -MULTIHOME=127.0.0.1, so the host's network binding is not restricted to loopback. No firewall rules, hosts-file entries or system certificates are changed.
 
 The launcher loads Reboot components into its own game processes. Windows job objects close those game and companion processes when their helper exits. Existing game EXEs are not patched or replaced. Legacy companion processes remain suspended.
 
