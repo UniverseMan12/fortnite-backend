@@ -73,7 +73,7 @@ cheat local autoheal on
 
 Use `off` instead of `on` to disable a toggle. The message under the buttons reports the result or explains why an action is unavailable. These are local practice tools; they do not add support for other game versions.
 
-Validation: the customized server builds successfully, starts on 4.2 and displays the new controls. The individual actions, including respawn after death, still need in-match verification.
+Validation on 4.2: server startup, joining through Play, the new tabs, Gauntlet spawning, chest loot, cleanup of tool-spawned pickups, saving/returning to a position and pawn replacement were exercised in a local session. The starter-kit action also returned both weapons and supplies. Full respawn after a real elimination and complete Thanos transformation/abilities still need verification.
 
 ## Requirements
 
