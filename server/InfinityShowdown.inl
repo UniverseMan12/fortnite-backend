@@ -279,6 +279,11 @@ namespace InfinityShowdown {
         mode->ProcessEvent(spawn, &params);
         auto pawn = Cast<AFortPlayerPawn>(params.result); if (!pawn) return false;
         state->EndDBNOAbilities(); state->ClearDeathInfo(); pawn->SetOwner(controller); controller->Possess(pawn);
+        // Gadget removal can happen after the old pawn has disappeared. Apply
+        // the original loadout to the newly possessed pawn as well, so the
+        // replicated Thanos character parts do not survive a normal respawn.
+        if (auto loadout = controller->GetCosmeticLoadout())
+            if (auto character = loadout->GetCharacter()) ApplyCID(pawn, character);
         pawn->SetMaxHealth(100); pawn->SetHealth(100); pawn->SetMaxShield(100); LocalTools::RestoreShield(pawn);
         controller->SetPlayerIsWaiting(false); controller->ClientClearDeathNotification(); controller->RespawnPlayerAfterDeath(false);
         if (auto restart = controller->FindFunction("ClientRestart")) controller->ProcessEvent(restart, &pawn);
