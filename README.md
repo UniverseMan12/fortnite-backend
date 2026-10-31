@@ -2,6 +2,24 @@
 
 A launcher for a local Fortnite legacy setup, using **LawinServer** and components from **Project Reboot**.
 
+## Installation & downloads
+
+Use a **Windows 10/11 x64** PC with internet access for the first setup. Install the requirements below once; skip anything already installed.
+
+| Download | What to choose / install |
+| --- | --- |
+| **[Node.js](https://nodejs.org/en/download)** | Windows **x64 Installer (.msi)**, version **22 or newer**. Keep npm and Add to PATH enabled. The launcher is tested with Node.js 22. |
+| **[Git for Windows](https://git-scm.com/install/windows)** | **x64 Setup**. Keep Git available from the command line; the launcher uses it to download the backend. |
+| **[Microsoft Visual C++ Runtime — x64](https://aka.ms/vc14/vc_redist.x64.exe)** | Run the installer and choose Install or Repair if needed. [Microsoft download information](https://learn.microsoft.com/en-us/cpp/windows/latest-supported-vc-redist). |
+| **[Fortnite 4.2 — Google Drive](https://drive.google.com/file/d/1m8VEUcKnxA0UYHt5-txPbRhfbn0OVhEm/view?usp=sharing)** | Download and fully extract the game. Link supplied by the project owner. |
+| **[Launcher — Download ZIP](https://github.com/UniverseMan12/fortnite-backend/archive/refs/heads/main.zip)** | Extract the ZIP, then open the folder containing **START.cmd**. |
+| [7-Zip](https://www.7-zip.org/download.html) — optional | Choose **64-bit Windows x64** if you need an extractor for the game archive. |
+| [DirectX legacy runtime](https://www.microsoft.com/en-us/download/details.aspx?id=35) — if needed | Install if the game reports missing legacy DirectX files such as **XINPUT1_3.dll** or **D3DX9_43.dll**. |
+
+**First-time setup:** install Node.js, Git and the Visual C++ runtime, then extract both downloads into separate folders. Close any old launcher window after installing the requirements. Open **START.cmd** from the extracted launcher folder and follow the steps below.
+
+The backend and Reboot components are downloaded automatically on first launch. Windows PowerShell is used by the launcher and is included with Windows. Keep enough free disk space for the game archive and its extracted files, and enough RAM to run the host and client together.
+
 ## Start
 
 1. Open **START.cmd**.
@@ -75,9 +93,9 @@ Use `off` instead of `on` to disable a toggle. The message under the buttons rep
 
 Validation on 4.2: server startup, joining through Play, the new tabs, Gauntlet spawning, chest loot, cleanup of tool-spawned pickups, saving/returning to a position and pawn replacement were exercised in a local session. The starter-kit action also returned both weapons and supplies. Full respawn after a real elimination and complete Thanos transformation/abilities still need verification.
 
-## Requirements
+## Setup details
 
-Windows x64, [Node.js 22 or newer](https://nodejs.org/), [Git](https://git-scm.com/downloads/win) for first-time setup, and your own complete Fortnite 4.2 installation. No game files are included.
+Download links and installation requirements are listed [above](#installation--downloads). Game files are separate from this repository.
 
 First-time setup needs internet and may take a few minutes. Pinned components are downloaded automatically, with size limits, checksum verification and retries for temporary network failures. Interrupted or invalid downloads keep existing files intact. Server replacement is atomic and saves the previous DLL as runtime/reboot.previous.dll. Later starts reuse installed components. The host and client run as two game processes, so allow enough RAM for both. Local matches do not automatically contain other players or bots.
 
@@ -88,6 +106,8 @@ First-time setup needs internet and may take a few minutes. Pinned components ar
 | Missing FortniteGame or Engine | Select the folder containing both folders. |
 | Version cannot be detected or is unsupported | Use a complete 4.2 installation. Detection reads the EXE, not the folder name. |
 | Node.js is missing | Install Node.js 22 or newer and reopen START.cmd. |
+| Git is missing | Install [Git for Windows](https://git-scm.com/install/windows) with command-line support, then reopen START.cmd. |
+| VCRUNTIME140.dll or MSVCP140.dll is missing | Install or repair the [Visual C++ x64 runtime](https://aka.ms/vc14/vc_redist.x64.exe). |
 | Port 80, 3551 or 7777 is occupied | Close your other backend or host instance. Unrelated services are not stopped automatically. |
 | Setup fails | Read logs/setup.log and the error shown in the launcher. |
 | Server update fails | Close the running Fortnite session, then reopen START.cmd. |
