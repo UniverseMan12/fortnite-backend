@@ -1,5 +1,6 @@
 // Included once by NetDriver.cpp: all Unreal mutations run on its game thread.
 #include "LocalTools.h"
+#include "LocalToolsCatalog.h"
 #include "FortWeapon.h"
 #include "FortInventory.h"
 #include "FortPickup.h"
@@ -11,6 +12,46 @@ namespace LocalTools {
     static int DeadControllerIndex = -1;
     static FVector DeathLocation;
     static bool HasDeathLocation = false;
+    static FVector SavedLocation;
+    static FRotator SavedRotation;
+    struct TrackedObject {
+        int index = -1, serial = -1;
+        UObject* address = nullptr;
+        FName name;
+        TrackedObject() = default;
+        explicit TrackedObject(UObject* object) : index(object->InternalIndex), address(object), name(object->NamePrivate) {
+            auto slot = GetItemByIndex(index); serial = slot ? slot->SerialNumber : -1;
+        }
+        UObject* Get() const {
+            auto slot = GetItemByIndex(index);
+            return slot && !slot->IsPendingKill() && slot->SerialNumber == serial && slot->Object == address &&
+                slot->Object && slot->Object->NamePrivate == name ? slot->Object : nullptr;
+        }
+    };
+    static TrackedObject SessionPlayer;
+    static std::vector<TrackedObject> SpawnedLoot;
+    static auto LastAction = std::chrono::steady_clock::time_point{};
+
+    static void PruneLoot() {
+        SpawnedLoot.erase(std::remove_if(SpawnedLoot.begin(), SpawnedLoot.end(), [](const TrackedObject& ref) {
+            auto actor = Cast<AFortPickup>(ref.Get());
+            return !actor || actor->IsActorBeingDestroyed();
+        }), SpawnedLoot.end());
+        SpawnedLootCount.store(static_cast<int>(SpawnedLoot.size()));
+    }
+    static bool TrackPickup(PickupCreateData& data) {
+        if (SpawnedLoot.size() >= LootLimit) return false;
+        auto pickup = AFortPickup::SpawnPickup(data);
+        if (!pickup) return false;
+        SpawnedLoot.emplace_back(pickup);
+        SpawnedLootCount.store(static_cast<int>(SpawnedLoot.size()));
+        return true;
+    }
+    static void RestoreHealth(AFortPlayerPawn* pawn) {
+        if (pawn->GetHealth() < 100) pawn->SetHealth(100);
+        if (pawn->GetShield() < 100) pawn->SetShield(100);
+        pawn->ForceNetUpdate();
+    }
 
     bool IsLocal(AFortPlayerController* controller) {
         if (!controller || !controller->IsValidLowLevel()) return false;
@@ -75,16 +116,17 @@ namespace LocalTools {
     static bool RespawnPlayer(AFortPlayerControllerAthena* controller) {
         auto mode = Cast<AFortGameModeAthena>(GetWorld()->GetGameMode());
         auto state = Cast<AFortPlayerStateAthena>(controller->GetPlayerState());
-        if (!mode || !state || !controller->GetWorldInventory()) return false;
+        if (!mode || !state || !controller->GetWorldInventory()) { Report("Player inventory or match is not ready."); return false; }
         if (state->IsInAircraft()) { Report("Jump from the bus before respawning."); return false; }
         auto gameState = mode->GetGameStateAthena();
         if (!gameState || gameState->GetGamePhase() == EAthenaGamePhase::EndGame) {
             Report("The match has ended. Restart with Practice respawn enabled."); return false;
         }
         auto oldPawn = controller->GetMyFortPawn();
+        if (oldPawn && (!oldPawn->IsValidLowLevel() || oldPawn->IsActorBeingDestroyed())) oldPawn = nullptr;
         bool dead = DeadControllerIndex == controller->InternalIndex;
-        if (!oldPawn && !(dead && HasDeathLocation)) { Report("No spawn position is available yet."); return false; }
-        FVector location = dead && HasDeathLocation ? DeathLocation : oldPawn->GetActorLocation();
+        if (!oldPawn && !(dead && HasDeathLocation) && !HasSavedSpot.load()) { Report("No spawn position is available yet."); return false; }
+        FVector location = HasSavedSpot.load() ? SavedLocation : dead && HasDeathLocation ? DeathLocation : oldPawn->GetActorLocation();
         location.Z += 150;
         auto spawn = FindObject<UFunction>(L"/Script/Engine.GameModeBase.SpawnDefaultPawnAtTransform");
         if (!spawn) { Report("This build does not expose pawn spawning."); return false; }
@@ -113,14 +155,58 @@ namespace LocalTools {
         return true;
     }
 
-    void Execute(AFortPlayerControllerAthena* controller, Action action) {
+    void Execute(AFortPlayerControllerAthena* controller, Action action, int item, int stack) {
         if (!IsLocal(controller)) { Report("No local player. Join your match first."); return; }
+        if (SessionPlayer.Get() != controller) {
+            SessionPlayer = TrackedObject(controller);
+            DeadControllerIndex = -1; HasDeathLocation = false; HasSavedSpot.store(false);
+        }
+        auto now = std::chrono::steady_clock::now();
+        if (now - LastAction < std::chrono::milliseconds(250)) { Report("Please wait a moment before the next action."); return; }
+        LastAction = now;
+        PruneLoot();
+        if (action == ForgetSpot) { HasSavedSpot.store(false); Report("Saved spot cleared."); return; }
         if (action == Respawn) { RespawnPlayer(controller); return; }
         auto pawn = controller->GetMyFortPawn();
-        if (!pawn || !pawn->IsValidLowLevel() || DeadControllerIndex == controller->InternalIndex) {
+        if (!pawn || !pawn->IsValidLowLevel() || pawn->IsActorBeingDestroyed() || pawn->GetHealth() <= 0 || DeadControllerIndex == controller->InternalIndex) {
             Report("Respawn or join the match first."); return;
         }
-        if (action == ClearBuilds) {
+        if (pawn->IsDBNO()) { Report("Get revived or use Respawn me first."); return; }
+        auto playerState = Cast<AFortPlayerStateAthena>(controller->GetPlayerState());
+        if (!playerState || playerState->IsInAircraft()) { Report("Jump from the bus before using this tool."); return; }
+        if (action == SaveSpot) {
+            SavedLocation = pawn->GetActorLocation(); SavedRotation = controller->GetControlRotation();
+            HasSavedSpot.store(true); Report("Spot saved. Return here or use it as your respawn point.");
+        } else if (action == ReturnSpot) {
+            if (!HasSavedSpot.load()) { Report("Click Save my spot first."); return; }
+            auto destination = SavedLocation; destination.Z += 100;
+            Report(pawn->TeleportTo(destination, SavedRotation) ? "Returned to your saved spot." : "The saved spot is blocked. Move the obstacle or save a new spot.");
+        } else if (action == ClearLoot) {
+            int removed = 0;
+            for (const auto& ref : SpawnedLoot) {
+                auto pickup = Cast<AFortPickup>(ref.Get());
+                if (pickup && !pickup->IsActorBeingDestroyed()) { pickup->K2_DestroyActor(); ++removed; }
+            }
+            PruneLoot(); Report("Removed " + std::to_string(removed) + " tool-spawned pickups. Map loot kept.");
+        } else if (action == Gauntlet || action == SpawnItem) {
+            if (action == Gauntlet) item = 0;
+            if (item < 0 || item >= CatalogSize || stack < 1 || stack > Catalog[item].maxStack) {
+                Report("Select a valid item and stack size."); return;
+            }
+            if (SpawnedLoot.size() >= LootLimit) { Report("Loot limit reached. Pick items up or click Clear spawned loot."); return; }
+            if (item == 0 && (!Globals::bEnableAGIDs || !Addresses::ApplyGadgetData || !Addresses::RemoveGadgetData)) {
+                Report("Gauntlet needs Enable AGIDs and gadget support in this build."); return;
+            }
+            auto definition = FindObject<UFortWorldItemDefinition>(Catalog[item].asset, nullptr, ANY_PACKAGE);
+            if (!definition) { Report("This item is not loaded in your game build."); return; }
+            PickupCreateData data;
+            auto weapon = Cast<UFortWeaponItemDefinition>(definition);
+            data.ItemEntry = FFortItemEntry::MakeItemEntry(definition, stack, weapon ? weapon->GetClipSize() : -1);
+            data.bShouldFreeItemEntryWhenDeconstructed = true;
+            data.SpawnLocation = pawn->GetActorLocation() + pawn->GetActorForwardVector() * 200;
+            data.SpawnLocation.Z += 100; data.bToss = true; data.bRandomRotation = true;
+            Report(TrackPickup(data) ? std::string("Spawned ") + Catalog[item].label + ". Pick it up in front of you." : "The game could not spawn this pickup.");
+        } else if (action == ClearBuilds) {
             auto buildings = UGameplayStatics::GetAllActorsOfClass(GetWorld(), ABuildingSMActor::StaticClass());
             int count = 0;
             for (int i = 0; i < buildings.Num(); ++i) {
@@ -133,7 +219,7 @@ namespace LocalTools {
             Report("Removed " + std::to_string(count) + " player builds. Map structures kept.");
         } else if (action == Heal) {
             if (pawn->IsDBNO()) { Report("Respawn or get revived before healing."); return; }
-            pawn->SetHealth(100); pawn->SetShield(100); pawn->ForceNetUpdate();
+            RestoreHealth(pawn);
             Report("Health and shield restored.");
         } else if (action == Materials || action == Ammo) {
             int count = TopUp(controller, action == Materials);
@@ -157,9 +243,13 @@ namespace LocalTools {
             TopUp(controller, false); TopUp(controller, true);
             Report("Starter kit: " + std::to_string(count) + "/2 weapons available, ammo and materials refilled.");
         } else if (action == Loot) {
+            if (SpawnedLoot.size() >= LootLimit) { Report("Loot limit reached. Clear spawned loot first."); return; }
             auto gameState = Cast<AFortGameStateAthena>(GetWorld()->GetGameState());
             if (!gameState) { Report("Match is not ready."); return; }
-            auto drops = PickLootDrops(UKismetStringLibrary::Conv_StringToName(L"Loot_AthenaTreasure"), gameState->GetWorldLevel(), -1, false);
+            auto mode = Cast<AFortGameModeAthena>(GetWorld()->GetGameMode());
+            auto tier = UKismetStringLibrary::Conv_StringToName(L"Loot_AthenaTreasure");
+            if (mode) tier = mode->RedirectLootTier(tier);
+            auto drops = PickLootDrops(tier, gameState->GetWorldLevel(), -1, false);
             int count = 0;
             for (auto& drop : drops) {
                 PickupCreateData data;
@@ -169,7 +259,7 @@ namespace LocalTools {
                 data.SpawnLocation.Z += 100;
                 data.bToss = true; data.bRandomRotation = true;
                 data.SourceType = EFortPickupSourceTypeFlag::GetContainerValue();
-                if (AFortPickup::SpawnPickup(data)) ++count;
+                if (TrackPickup(data)) ++count;
             }
             Report(count ? "Spawned " + std::to_string(count) + " loot pickups in front of you." : "This playlist returned no chest loot.");
         }
@@ -180,24 +270,41 @@ namespace LocalTools {
         using Clock = std::chrono::steady_clock;
         static auto lastRefill = Clock::now();
         bool refill = Clock::now() - lastRefill >= std::chrono::milliseconds(500);
-        int action = Pending.exchange(None);
+        auto request = TakeRequest();
+        int action = request.action;
         if (!refill && action == None) return;
         if (refill) lastRefill = Clock::now();
         AFortPlayerControllerAthena* local = nullptr;
+        int localCount = 0;
         auto& connections = driver->GetClientConnections();
         for (int i = 0; i < connections.Num(); ++i) {
             auto connection = connections.at(i);
             if (!connection) continue;
             auto controller = Cast<AFortPlayerControllerAthena>(connection->GetPlayerController());
             if (!IsLocal(controller)) continue;
-            if (local) { if (action != None) Report("More than one local player. Use F8 commands to target yourself."); return; }
+            ++localCount;
             local = controller;
         }
-        if (!local) { if (action != None) Report("Join your local match first."); return; }
-        if (action != None) Execute(local, static_cast<Action>(action));
-        if (refill && DeadControllerIndex != local->InternalIndex && local->GetMyFortPawn()) {
+        LocalPlayerCount.store(localCount);
+        if (localCount != 1) {
+            PlayerReady.store(false);
+            if (!localCount) { SessionPlayer = {}; DeadControllerIndex = -1; HasDeathLocation = false; HasSavedSpot.store(false); }
+            if (action != None) Report(localCount ? "Local tools require exactly one local player." : "Join your local match first.");
+            return;
+        }
+        if (SessionPlayer.Get() != local) {
+            SessionPlayer = TrackedObject(local); DeadControllerIndex = -1; HasDeathLocation = false; HasSavedSpot.store(false);
+        }
+        auto pawn = local->GetMyFortPawn();
+        bool alive = pawn && pawn->IsValidLowLevel() && !pawn->IsActorBeingDestroyed() && pawn->GetHealth() > 0 && !pawn->IsDBNO() && DeadControllerIndex != local->InternalIndex;
+        PlayerReady.store(alive);
+        if (action != None) Execute(local, request.action, request.item, request.count);
+        if (refill) PruneLoot();
+        if (refill && alive && action != Respawn) {
             if (InfiniteMaterials.load()) TopUp(local, true);
             if (InfiniteAmmo.load()) { TopUp(local, false); RefillMagazine(local); }
+            if (AutoHeal.load()) RestoreHealth(pawn);
         }
     }
 }
+#include "LocalToolsCommands.inl"

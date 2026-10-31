@@ -5,7 +5,7 @@ import { fileURLToPath } from 'node:url';
 export function patchLocalTools(root) {
   const dir = path.join(root, 'Project Reboot 3.0');
   const source = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', 'server');
-  for (const name of ['LocalTools.h', 'LocalTools.inl', 'LocalToolsUI.inl']) {
+  for (const name of ['LocalTools.h', 'LocalTools.inl', 'LocalToolsUI.inl', 'LocalToolsCatalog.h', 'LocalToolsCommands.inl']) {
     fs.copyFileSync(path.join(source, name), path.join(dir, name));
   }
   const edit = (name, replacements) => {
@@ -62,4 +62,14 @@ export function patchLocalTools(root) {
      '\t\t}\n' +
      '\t\tif (Command == "giveitem")']
   ]);
+  // Upgrade the first local-tools patch without rewriting unrelated upstream code.
+  const commandFile = path.join(dir, 'commands.cpp');
+  let commands = fs.readFileSync(commandFile, 'utf8').replace(/\r\n/g, '\n');
+  if (!commands.includes('LocalTools::Command(PlayerController, Arguments)')) {
+    const start = commands.indexOf('\t\tif (Command == "local") {');
+    const end = commands.indexOf('\t\tif (Command == "giveitem")', start);
+    if (start < 0 || end < start) throw new Error('Cannot upgrade local command handler.');
+    commands = commands.slice(0, start) + '\t\tif (Command == "local") { LocalTools::Command(PlayerController, Arguments); return; }\n' + commands.slice(end);
+    fs.writeFileSync(commandFile, commands);
+  }
 }
