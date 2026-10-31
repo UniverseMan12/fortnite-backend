@@ -30,4 +30,6 @@ Earlier manual Fortnite 4.2 testing confirmed bus departure, the larger visible 
 
 The fixed storm timestamps are held approximately 24 hours ahead. The wall and safe area work in the previous manual test, but the HUD can show approximately 1439 minutes; the timer is not hidden or polished.
 
+Follow-up from the same solo test: the restored skin still had stretched body proportions. Skin visibility alone did not establish complete cosmetic restoration. The next source revision saves the original six character-part slots, body type, gender and animation override before transformation, restores PlayerState before spawning, and refreshes the newly possessed pawn. Its native build and in-game proportions check are pending; the currently pinned DLL does not contain this follow-up.
+
 If the game cannot load the Thanos gadget, apply its abilities, or find the starter weapons, the mode reports a failure in Reboot and the affected player's F8 console. Stop the session and select Classic. This experimental mode does not silently claim a successful transformation when the game's gadget hook reports failure.

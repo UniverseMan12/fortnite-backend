@@ -8,11 +8,20 @@
 namespace InfinityShowdown {
     using Ref = LocalTools::TrackedObject;
     struct SavedItem { Ref definition; int count = 0, ammo = -1; std::string path; };
+    struct Appearance {
+        // 4.2 stores six part pointers directly on PlayerState, plus separate
+        // replicated gender/body enums. ApplyCID's legacy fallback only writes
+        // parts, leaving Thanos' body type and unused part slots behind.
+        Ref parts[6], animation;
+        uint8_t gender = 0, body = 0;
+        bool saved = false;
+    };
     struct Player {
         Ref controller, protectedPawn;
         InfinityRules::Lives lives;
         InfinityRules::Landing landing;
         std::vector<SavedItem> equipment;
+        Appearance appearance;
         bool connected = false, kit = false, transformed = false, restore = false;
         double respawnAt = 0, protectionUntil = 0;
         FVector location;
@@ -119,6 +128,78 @@ namespace InfinityShowdown {
         const int offset = mode->GetOffset("SafeZoneLocations", false);
         if (offset != -1) { const auto& locations = mode->Get<TArray<FVector>>(offset); if (locations.Num() > 3) return locations.at(3); }
         return fallback;
+    }
+    static bool AppearanceOffsets(UObject* state, int& parts, int& gender, int& body) {
+        if (!state || Fortnite_Version != 4.2) return false;
+        parts = state->GetOffset("CharacterParts", false);
+        gender = state->GetOffset("CharacterGender", false);
+        body = state->GetOffset("CharacterBodyType", false);
+        // Reject a different layout instead of treating a newer struct as the
+        // fixed pointer array used by the supported 4.2 SDK.
+        return parts >= 0 && gender >= 0 && body >= 0 &&
+            state->GetOffset("CharacterColorSwatches", false) - parts == 6 * sizeof(UObject*);
+    }
+    static bool SaveAppearance(AFortPlayerControllerAthena* controller, Player& player) {
+        if (player.appearance.saved) return true;
+        auto state = controller->GetPlayerState(); auto pawn = controller->GetMyFortPawn();
+        int parts, gender, body;
+        if (!pawn || !AppearanceOffsets(state, parts, gender, body)) return false;
+        const int animation = pawn->GetOffset("AnimBPOverride", false);
+        if (animation < 0) return false;
+        auto source = state->GetPtr<UObject*>(parts);
+        if (!source[0] || !source[1]) return false;
+        Appearance saved;
+        for (int i = 0; i < 6; ++i) {
+            if (source[i] && !source[i]->IsValidLowLevel()) return false;
+            saved.parts[i] = Ref(source[i]);
+        }
+        saved.gender = state->Get<uint8_t>(gender); saved.body = state->Get<uint8_t>(body);
+        saved.animation = Ref(pawn->Get<UObject*>(animation)); saved.saved = true;
+        player.appearance = saved;
+        LOG_INFO(LogDev, "Infinity Showdown: saved original appearance (gender {}, body {}).", int(saved.gender), int(saved.body));
+        return true;
+    }
+    static bool RestoreAppearance(AFortPlayerControllerAthena* controller, const Player& player, bool notify) {
+        const auto& saved = player.appearance;
+        if (!saved.saved) return false;
+        auto state = controller->GetPlayerState(); int parts, gender, body;
+        if (!AppearanceOffsets(state, parts, gender, body)) return false;
+        UObject* resolved[6]{};
+        for (int i = 0; i < 6; ++i) {
+            resolved[i] = saved.parts[i].Get();
+            if (saved.parts[i].index >= 0 && !resolved[i]) return false;
+        }
+        auto originalAnimation = saved.animation.Get();
+        if (saved.animation.index >= 0 && !originalAnimation) return false;
+        const auto previousGender = state->Get<uint8_t>(gender), previousBody = state->Get<uint8_t>(body);
+        state->Get<uint8_t>(gender) = saved.gender; state->Get<uint8_t>(body) = saved.body;
+        auto destination = state->GetPtr<UObject*>(parts);
+        for (int i = 0; i < 6; ++i) destination[i] = resolved[i];
+        if (!notify) {
+            LOG_INFO(LogDev, "Infinity Showdown: restoring appearance before spawn (gender {} -> {}, body {} -> {}).",
+                int(previousGender), int(saved.gender), int(previousBody), int(saved.body));
+            return true;
+        }
+        // Only notify after Possess: gadget removal can have cleared the old
+        // pawn, and the new pawn must initialize its skeleton from normal data.
+        auto pawn = controller->GetMyFortPawn(); if (!pawn) return false;
+        for (auto name : {"OnRep_CharacterGender", "OnRep_CharacterBodyType", "OnRep_CharacterParts"})
+            if (auto fn = state->FindFunction(name)) state->ProcessEvent(fn);
+        const int animation = pawn->GetOffset("AnimBPOverride", false);
+        if (animation < 0) return false;
+        auto currentAnimation = pawn->Get<UObject*>(animation);
+        if (currentAnimation != originalAnimation) {
+            if (currentAnimation) {
+                auto clear = pawn->FindFunction("ClearAnimBPOverride"); if (!clear) return false;
+                pawn->ProcessEvent(clear, &currentAnimation);
+            }
+            if (originalAnimation) {
+                auto set = pawn->FindFunction("SetAnimBPOverride"); if (!set) return false;
+                pawn->ProcessEvent(set, &originalAnimation);
+            }
+        }
+        state->ForceNetUpdate(); pawn->ForceNetUpdate();
+        return true;
     }
     // Fortnite 4.2 exposes these fields through reflection. Missing fields are
     // ignored rather than interpreting a missing offset as an address.
@@ -269,6 +350,7 @@ namespace InfinityShowdown {
         auto old = Ref(controller->GetMyFortPawn());
         // Remove Thanos abilities before spawning a normal pawn; never drop the gauntlet.
         if (!RestoreEquipment(controller, player)) return false;
+        if (!RestoreAppearance(controller, player, false)) return false;
         auto location = ArenaCenter(mode, player.location);
         std::uniform_real_distribution<float> angle(0.f, 6.2831853f);
         float direction = angle(Random); location.X += std::cos(direction)*1200; location.Y += std::sin(direction)*1200;
@@ -279,11 +361,9 @@ namespace InfinityShowdown {
         mode->ProcessEvent(spawn, &params);
         auto pawn = Cast<AFortPlayerPawn>(params.result); if (!pawn) return false;
         state->EndDBNOAbilities(); state->ClearDeathInfo(); pawn->SetOwner(controller); controller->Possess(pawn);
-        // Gadget removal can happen after the old pawn has disappeared. Apply
-        // the original loadout to the newly possessed pawn as well, so the
-        // replicated Thanos character parts do not survive a normal respawn.
-        if (auto loadout = controller->GetCosmeticLoadout())
-            if (auto character = loadout->GetCharacter()) ApplyCID(pawn, character);
+        if (!RestoreAppearance(controller, player, true)) {
+            pawn->K2_DestroyActor(); return false;
+        }
         pawn->SetMaxHealth(100); pawn->SetHealth(100); pawn->SetMaxShield(100); LocalTools::RestoreShield(pawn);
         controller->SetPlayerIsWaiting(false); controller->ClientClearDeathNotification(); controller->RespawnPlayerAfterDeath(false);
         if (auto restart = controller->FindFunction("ClientRestart")) controller->ProcessEvent(restart, &pawn);
@@ -358,6 +438,9 @@ namespace InfinityShowdown {
             auto pawn = controller->GetMyFortPawn(); auto state = Cast<AFortPlayerStateAthena>(controller->GetPlayerState());
             if (!pawn || !pawn->IsValidLowLevel() || pawn->IsActorBeingDestroyed() || pawn->GetHealth() <= 0 || pawn->IsDBNO() || !state || state->IsInAircraft()) continue;
             if (game->GetGamePhase() < EAthenaGamePhase::Aircraft) continue;
+            if (!SaveAppearance(controller, player)) {
+                Faulted = true; Broadcast("Infinity Showdown could not save the original appearance. Stop and select Classic."); return;
+            }
             if (!player.kit) {
                 if (!AddKit(controller)) { Faulted = true; Broadcast("Infinity Showdown could not find the starter weapons. Stop this session and use Classic."); return; }
                 player.kit = true; LocalTools::RestoreHealth(pawn);
