@@ -230,7 +230,7 @@ namespace InfinityShowdown {
         }
         Buses.clear();
     }
-    static bool OnGround(AFortPlayerPawn* pawn) {
+    static bool OnGround(AFortPawn* pawn) {
         const int offset = pawn->GetOffset("CharacterMovement", false); if (offset < 0) return false;
         auto movement = pawn->Get<UObject*>(offset); if (!movement) return false;
         auto fn = movement->FindFunction("IsMovingOnGround"); if (!fn) return false;
