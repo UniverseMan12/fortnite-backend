@@ -10,6 +10,7 @@ namespace InfinityRules {
     constexpr int RespawnLimit = 10;
     constexpr double SelectionDelay = 20.0;
     constexpr float ArenaRadius = 15000.f;
+    constexpr float RespawnHeight = 20000.f;
     inline float LargerArena(float previous) {
         const float enlarged = std::isfinite(previous) ? previous * 1.35f : 0.f;
         return enlarged > ArenaRadius ? enlarged : ArenaRadius;

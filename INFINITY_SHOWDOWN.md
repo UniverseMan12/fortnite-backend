@@ -5,7 +5,7 @@ A private Fortnite 4.2 late-game mode with a randomly assigned Thanos role. This
 ## Play
 
 1. The host selects **Infinity Showdown** in the launcher, chooses their Fortnite folder and launches.
-2. In Reboot, click **Start server**. The mode uses the Carmine playlist for Thanos' ability HUD, with Solo gameplay rules, automatic supply drops disabled, gadget support and custom late-game rules.
+2. In Reboot, select **Infinity Showdown**, then **Start server**. It has its own button beside **Solo** and **Thanos (experimental)**. The mode uses the Carmine playlist for Thanos' ability HUD, with Solo gameplay rules, automatic supply drops disabled, gadget support and custom late-game rules.
 3. Friends choose **Join** and enter the host's VPN/LAN IP. The host controls the rules.
 4. Everyone presses Play to enter the island. Once everyone is connected, the host clicks **Start Bus** in Reboot.
 5. The bus flies across the arena with a 16-second jump window. Land first: you become eligible for random Thanos selection **20 seconds after touching the ground**. Selection only transforms a currently grounded player. No gauntlet drops from the sky.
@@ -13,7 +13,7 @@ A private Fortnite 4.2 late-game mode with a randomly assigned Thanos role. This
 ## Rules
 
 - Each player starts with one life and **10 additional respawns**. The eleventh death eliminates them normally. Duplicate death callbacks do not spend extra lives, and a failed pawn spawn retries without spending another life.
-- Respawns take three seconds and use a ground trace near the arena center. The new pawn gets three seconds of damage protection.
+- Respawns take three seconds and place you **200 metres above the terrain** near the arena center, skydiving back into the safe zone. The new pawn gets three seconds of damage protection.
 - Normal equipment stays in the inventory on death. Thanos's previous inventory is stored separately; after his death the gauntlet and its abilities are removed and the previous equipment is restored. No gauntlet pickup is created.
 - A different eligible live player is randomly selected as Thanos after the previous Thanos dies or disconnects. When everyone else is waiting to respawn, selection waits. Ordinary final-elimination/winner handling remains with the game server.
 - The starter kit contains a legendary SCAR, the available blue pump (fallback to the older pump if that definition is absent), six mini shields and three medkits. Wood, stone, metal and ammo start at 999. Consumables use their normal stack sizes. The kit is granted once, not refilled after each death.

@@ -29,7 +29,7 @@ export function patchInfinity(root) {
   ]);
   edit('extra.cpp', [
     ['#include "gui.h"','#include "gui.h"\n#include "InfinityShowdown.h"'],
-    ['\tstatic auto ZoneDurationsOffset =', '\tif (InfinityShowdown::Enabled.load()) {\n\t\tif (InfinityShowdown::BeginZone(GameModeAthena)) {\n\t\t\tSetZoneToIndexOriginal(GameModeAthena, OverridePhaseMaybeIDFK);\n\t\t\tInfinityShowdown::HoldZone(GameModeAthena);\n\t\t}\n\t\treturn;\n\t}\n\tstatic auto ZoneDurationsOffset =']
+    ['\tstatic auto ZoneDurationsOffset =', '\tif (InfinityShowdown::Enabled.load()) {\n\t\tif (InfinityShowdown::BeginZone(GameModeAthena)) {\n\t\t\tSetZoneToIndexOriginal(GameModeAthena, OverridePhaseMaybeIDFK);\n\t\t}\n\t\treturn;\n\t}\n\tstatic auto ZoneDurationsOffset =']
   ]);
   edit('FortGameModeAthena.cpp', [
     ['#include "FortGameModeAthena.h"', '#include "FortGameModeAthena.h"\n#include "InfinityShowdown.h"'],
@@ -38,13 +38,12 @@ export function patchInfinity(root) {
     ['OnAircraftEnteredDropZoneOriginal(GameModeAthena, Aircraft);\n\n\tif (Globals::bLateGame.load())',
      'OnAircraftEnteredDropZoneOriginal(GameModeAthena, Aircraft);\n\n\tif (Globals::bLateGame.load() && !InfinityShowdown::Enabled.load())']
   ]);
-  edit('FortSafeZoneIndicator.cpp', [
-    ['#include "FortSafeZoneIndicator.h"', '#include "FortSafeZoneIndicator.h"\n#include "InfinityShowdown.h"'],
-    ['return OnSafeZoneStateChangeOriginal(SafeZoneIndicator, NewState, bInitial);',
-     'if (InfinityShowdown::Enabled.load() && NewState == EFortSafeZoneState::Shrinking) NewState = EFortSafeZoneState::Holding;\n\treturn OnSafeZoneStateChangeOriginal(SafeZoneIndicator, NewState, bInitial);']
-  ]);
   edit('gui.h', [
     ['#include "LocalTools.h"','#include "LocalTools.h"\n#include "InfinityShowdown.h"'],
+    ['if (ImGui::Button("Solo")) PlaylistName = "/Game/Athena/Playlists/Playlist_DefaultSolo.Playlist_DefaultSolo";',
+     'if (ImGui::Button("Solo")) { InfinityShowdown::Enabled.store(false); SetIsLategame(false); PlaylistName = "/Game/Athena/Playlists/Playlist_DefaultSolo.Playlist_DefaultSolo"; }'],
+    ['if (ImGui::Button("Thanos (experimental)")) PlaylistName = "/Game/Athena/Playlists/Carmine/Playlist_Carmine.Playlist_Carmine";',
+     'if (ImGui::Button("Thanos (experimental)")) { InfinityShowdown::Enabled.store(false); SetIsLategame(false); Globals::bEnableAGIDs = true; PlaylistName = "/Game/Athena/Playlists/Carmine/Playlist_Carmine.Playlist_Carmine"; }\n\t\tImGui::SameLine();\n\t\tif (ImGui::Button("Infinity Showdown")) { InfinityShowdown::Enabled.store(true); SetIsLategame(true); Globals::bEnableAGIDs = true; LocalTools::PracticeRespawn.store(false); PlaylistName = "/Game/Athena/Playlists/Carmine/Playlist_Carmine.Playlist_Carmine"; InfinityShowdown::Report("Waiting for the Battle Bus. Every player has 10 respawns."); }'],
     ['\tchar multiplayerMode[2] = {};',
      '\tchar showdown[2] = {};\n\tif (GetEnvironmentVariableA("FORTNITE_LAUNCHER_SHOWDOWN", showdown, sizeof(showdown)) == 1 && showdown[0] == \'1\') {\n\t\tInfinityShowdown::Enabled.store(true);\n\t\tSetIsLategame(true); Globals::bEnableAGIDs = true;\n\t\tPlaylistName = "/Game/Athena/Playlists/Carmine/Playlist_Carmine.Playlist_Carmine";\n\t\tLocalTools::PracticeRespawn.store(false);\n\t}\n\tchar multiplayerMode[2] = {};'],
     // Existing late-game kit mutates inventory from its GUI thread. Our kit runs only on the game thread.

@@ -166,7 +166,9 @@ namespace InfinityShowdown {
         // Freeze one holding phase. Never repeatedly restart a 0.2-second shrink.
         const float end = game->GetServerWorldTimeSeconds() + 86400.f;
         Put(zone, "SafeZoneStartShrinkTime", end); Put(zone, "SafeZoneFinishShrinkTime", end);
-        Put(zone, "bPaused", true); Put(mode, "bSafeZonePaused", true);
+        // The indicator must keep ticking on clients to update the storm mesh
+        // and minimap. Pause progression on the game mode, not its rendering.
+        Put(zone, "bPaused", false); Put(mode, "bSafeZonePaused", true);
         Put(mode, "TimeRemainingWhenPhasePaused", 86400.f);
         if (auto fn = zone->FindFunction("SetSafeZoneRadiusAndCenter")) {
             struct { float radius; FVector center; } params{radius, center};
@@ -262,7 +264,8 @@ namespace InfinityShowdown {
         auto mode = Cast<AFortGameModeAthena>(GetWorld()->GetGameMode());
         auto state = Cast<AFortPlayerStateAthena>(controller->GetPlayerState());
         auto spawn = FindObject<UFunction>(L"/Script/Engine.GameModeBase.SpawnDefaultPawnAtTransform");
-        if (!mode || !state || !spawn || !controller->GetWorldInventory()) return false;
+        auto skydive = FindObject<UFunction>(L"/Script/FortniteGame.FortPlayerPawn.BeginSkydiving");
+        if (!mode || !state || !spawn || !skydive || !controller->GetWorldInventory()) return false;
         auto old = Ref(controller->GetMyFortPawn());
         // Remove Thanos abilities before spawning a normal pawn; never drop the gauntlet.
         if (!RestoreEquipment(controller, player)) return false;
@@ -270,6 +273,7 @@ namespace InfinityShowdown {
         std::uniform_real_distribution<float> angle(0.f, 6.2831853f);
         float direction = angle(Random); location.X += std::cos(direction)*1200; location.Y += std::sin(direction)*1200;
         if (!GroundAt(location)) return false;
+        location.Z += InfinityRules::RespawnHeight;
         FTransform transform{}; transform.Translation = location; transform.Rotation = controller->GetControlRotation().Quaternion(); transform.Scale3D = FVector(1,1,1);
         struct { AController* controller; FTransform transform; APawn* result; } params{controller,transform,nullptr};
         mode->ProcessEvent(spawn, &params);
@@ -278,11 +282,12 @@ namespace InfinityShowdown {
         pawn->SetMaxHealth(100); pawn->SetHealth(100); pawn->SetMaxShield(100); LocalTools::RestoreShield(pawn);
         controller->SetPlayerIsWaiting(false); controller->ClientClearDeathNotification(); controller->RespawnPlayerAfterDeath(false);
         if (auto restart = controller->FindFunction("ClientRestart")) controller->ProcessEvent(restart, &pawn);
+        bool fromBus = false; pawn->ProcessEvent(skydive, &fromBus);
         pawn->SetCanBeDamaged(false); player.protectedPawn = Ref(pawn); player.protectionUntil = now + 3;
         pawn->ForceNetUpdate();
         if (auto previous = Cast<AActor>(old.Get())) if (previous != pawn && !previous->IsActorBeingDestroyed()) previous->K2_DestroyActor();
         player.lives.Spawned();
-        Tell(controller, "Infinity Showdown: " + std::to_string(player.lives.remaining) + " respawns remaining."); return true;
+        Tell(controller, "Respawned above the arena. " + std::to_string(player.lives.remaining) + " respawns remaining."); return true;
     }
     bool OnDeath(AFortPlayerController* controller) {
         if (!Enabled.load() || Faulted) return false;
