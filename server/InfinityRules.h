@@ -7,6 +7,19 @@
 // Engine-independent rules. A life token identifies a pawn, not a death callback.
 namespace InfinityRules {
     constexpr int RespawnLimit = 10;
+    constexpr double SelectionDelay = 20.0;
+    constexpr float ArenaRadius = 15000.f;
+    constexpr float BusSpeed = 1500.f;
+    constexpr float BusDropStart = 1.f, BusDropEnd = 17.f, BusFlightEnd = 23.f;
+    struct Landing {
+        uint64_t pawn = 0;
+        double landedAt = -1;
+        bool Ready(uint64_t life, bool grounded, double now) {
+            if (pawn != life) { pawn = life; landedAt = -1; }
+            if (grounded && landedAt < 0) landedAt = now;
+            return grounded && landedAt >= 0 && now >= landedAt + SelectionDelay;
+        }
+    };
     struct Lives {
         int remaining = RespawnLimit;
         bool pending = false, eliminated = false;

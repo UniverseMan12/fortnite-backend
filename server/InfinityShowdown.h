@@ -5,8 +5,10 @@
 class AFortPlayerController;
 class UFortItemDefinition;
 class UNetDriver;
+class AFortGameModeAthena;
 namespace InfinityShowdown {
     inline std::atomic<bool> Enabled(false);
+    inline std::atomic<bool> BusRequested(false);
     inline std::mutex InfoMutex;
     inline std::string Info = "Waiting for the Battle Bus. Every player has 10 respawns.";
     inline void Report(const std::string& value) { std::lock_guard<std::mutex> lock(InfoMutex); Info = value; }
@@ -14,4 +16,6 @@ namespace InfinityShowdown {
     bool OnDeath(AFortPlayerController* controller);
     void Tick(UNetDriver* driver);
     void GadgetApplied(AFortPlayerController* controller, UFortItemDefinition* definition, bool success);
+    bool BeginZone(AFortGameModeAthena* mode);
+    void HoldZone(AFortGameModeAthena* mode);
 }

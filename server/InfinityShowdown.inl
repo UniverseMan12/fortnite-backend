@@ -11,6 +11,7 @@ namespace InfinityShowdown {
     struct Player {
         Ref controller, protectedPawn;
         InfinityRules::Lives lives;
+        InfinityRules::Landing landing;
         std::vector<SavedItem> equipment;
         bool connected = false, kit = false, transformed = false, restore = false;
         double respawnAt = 0, protectionUntil = 0;
@@ -18,6 +19,10 @@ namespace InfinityShowdown {
     };
     static std::unordered_map<std::string, Player> Players;
     static Ref World, Driver;
+    static Ref ZoneWorld, HeldZone;
+    static bool ZoneStarted = false, BusStarted = false, BusConfigured = false, BusExited = false;
+    static double BusStartedAt = 0;
+    static std::vector<Ref> Buses;
     static std::string Thanos, PreviousThanos;
     static std::mt19937 Random(std::random_device{}());
     static bool AssignmentSucceeded = false, Faulted = false;
@@ -115,6 +120,110 @@ namespace InfinityShowdown {
         if (offset != -1) { const auto& locations = mode->Get<TArray<FVector>>(offset); if (locations.Num() > 3) return locations.at(3); }
         return fallback;
     }
+    // Fortnite 4.2 exposes these fields through reflection. Missing fields are
+    // ignored rather than interpreting a missing offset as an address.
+    template<class T> static bool Put(UObject* object, const char* name, const T& value) {
+        if (!object) return false;
+        const int offset = object->GetOffset(name, false); if (offset < 0) return false;
+        object->Get<T>(offset) = value; return true;
+    }
+    bool BeginZone(AFortGameModeAthena* mode) {
+        if (ZoneWorld.Get() != GetWorld()) { ZoneWorld = Ref(GetWorld()); ZoneStarted = false; HeldZone = {}; }
+        if (ZoneStarted) return false;
+        ZoneStarted = true;
+        Put(mode, "SafeZonePhase", 3);
+        Put(mode->GetGameState(), "SafeZonePhase", uint8_t(3));
+        return true;
+    }
+    void HoldZone(AFortGameModeAthena* mode) {
+        if (!ZoneStarted || !mode) return;
+        auto zone = mode->GetSafeZoneIndicator(); if (!zone || HeldZone.Get() == zone) return;
+        auto game = Cast<AFortGameStateAthena>(mode->GetGameState()); if (!game) return;
+        const auto center = ArenaCenter(mode, zone->GetActorLocation());
+        for (auto name : {"LastCenter", "NextCenter", "NextNextCenter"}) Put(zone, name, center);
+        for (auto name : {"LastRadius", "NextRadius", "NextNextRadius", "Radius"}) Put(zone, name, InfinityRules::ArenaRadius);
+        // Freeze one holding phase. Never repeatedly restart a 0.2-second shrink.
+        const float end = game->GetServerWorldTimeSeconds() + 86400.f;
+        Put(zone, "SafeZoneStartShrinkTime", end); Put(zone, "SafeZoneFinishShrinkTime", end);
+        Put(zone, "bPaused", true); Put(mode, "bSafeZonePaused", true);
+        Put(mode, "TimeRemainingWhenPhasePaused", 86400.f);
+        if (auto fn = zone->FindFunction("SetSafeZoneRadiusAndCenter")) {
+            struct { float radius; FVector center; } params{InfinityRules::ArenaRadius, center};
+            zone->ProcessEvent(fn, &params);
+        }
+        zone->ForceNetUpdate(); game->ForceNetUpdate(); HeldZone = Ref(zone);
+        LOG_INFO(LogDev, "Infinity Showdown: fixed arena radius {} cm", InfinityRules::ArenaRadius);
+    }
+    static void TickBus(AFortGameModeAthena* mode, AFortGameStateAthena* game, double now) {
+        if (BusRequested.exchange(false) && !BusStarted && game->GetGamePhase() < EAthenaGamePhase::Aircraft) {
+            BusStarted = true; mode->StartAircraftPhase();
+        }
+        // Also cover a bus started by the native countdown.
+        if (!BusConfigured && game->GetGamePhase() == EAthenaGamePhase::Aircraft) {
+            const int offset = game->GetOffset("Aircrafts", false); if (offset < 0) return;
+            auto& aircrafts = game->Get<TArray<AActor*>>(offset); if (!aircrafts.Num()) return;
+            auto start = ArenaCenter(mode, FVector()); start.X -= 13500; start.Z += 10000;
+            const int flightOffset = FindOffsetStruct("/Script/FortniteGame.AircraftFlightInfo", "FlightStartLocation");
+            const int rotationOffset = FindOffsetStruct("/Script/FortniteGame.AircraftFlightInfo", "FlightStartRotation");
+            const int speedOffset = FindOffsetStruct("/Script/FortniteGame.AircraftFlightInfo", "FlightSpeed");
+            const int endOffset = FindOffsetStruct("/Script/FortniteGame.AircraftFlightInfo", "TimeTillFlightEnd");
+            const int dropOffset = FindOffsetStruct("/Script/FortniteGame.AircraftFlightInfo", "TimeTillDropStart");
+            const int dropEndOffset = FindOffsetStruct("/Script/FortniteGame.AircraftFlightInfo", "TimeTillDropEnd");
+            if (flightOffset < 0 || rotationOffset < 0 || speedOffset < 0 || endOffset < 0 || dropOffset < 0 || dropEndOffset < 0) {
+                Faulted = true; Report("Infinity Showdown: unsupported aircraft fields. Restart with Classic."); return;
+            }
+            for (int i = 0; i < aircrafts.Num(); ++i) {
+                auto bus = aircrafts.at(i); if (!bus || bus->IsActorBeingDestroyed()) continue;
+                const int info = bus->GetOffset("FlightInfo", false); if (info < 0) continue;
+                bus->Get<FVector>(info + flightOffset) = start;
+                bus->Get<FRotator>(info + rotationOffset) = FRotator();
+                bus->Get<float>(info + speedOffset) = InfinityRules::BusSpeed;
+                bus->Get<float>(info + endOffset) = InfinityRules::BusFlightEnd;
+                bus->Get<float>(info + dropOffset) = InfinityRules::BusDropStart;
+                bus->Get<float>(info + dropEndOffset) = InfinityRules::BusDropEnd;
+                Put(bus,"FlightStartTime",float(now)); Put(bus,"FlightEndTime",float(now)+InfinityRules::BusFlightEnd);
+                Put(bus,"DropStartTime",float(now)+InfinityRules::BusDropStart); Put(bus,"DropEndTime",float(now)+InfinityRules::BusDropEnd);
+                Put(bus,"FlightElapsedTime",0.f);
+                bus->TeleportTo(start, FRotator()); bus->ForceNetUpdate(); Buses.emplace_back(bus);
+            }
+            if (Buses.empty()) return;
+            BusConfigured = BusStarted = true; BusStartedAt = now;
+            Put(game,"AircraftStartTime",float(now)); Put(game,"SafeZonesStartTime",float(now)+InfinityRules::BusDropEnd);
+            game->ForceNetUpdate(); Report("Battle Bus departing. Thanos selection starts 20 seconds after landing.");
+        }
+        if (!BusConfigured) return;
+        if (!BusExited && now >= BusStartedAt + InfinityRules::BusDropEnd + 1) {
+            BusExited = true;
+            // Normal aircraft timing handles this first; this is a one-shot fallback.
+            if (game->GetGamePhase() == EAthenaGamePhase::Aircraft) game->SkipAircraft();
+        }
+        if (now < BusStartedAt + InfinityRules::BusFlightEnd + 2) return;
+        for (const auto& pair : Players) if (pair.second.connected) {
+            auto controller = Cast<AFortPlayerController>(pair.second.controller.Get());
+            auto state = controller ? Cast<AFortPlayerStateAthena>(controller->GetPlayerState()) : nullptr;
+            if (state && state->IsInAircraft()) return;
+        }
+        for (auto& ref : Buses) if (auto bus = Cast<AActor>(ref.Get())) {
+            if (!bus->IsActorBeingDestroyed()) {
+                if (auto ended = mode->FindFunction("OnAircraftFlightEnded")) mode->ProcessEvent(ended, &bus);
+                if (!bus->IsActorBeingDestroyed()) bus->K2_DestroyActor();
+            }
+        }
+        Buses.clear();
+    }
+    static bool OnGround(AFortPlayerPawn* pawn) {
+        const int offset = pawn->GetOffset("CharacterMovement", false); if (offset < 0) return false;
+        auto movement = pawn->Get<UObject*>(offset); if (!movement) return false;
+        auto fn = movement->FindFunction("IsMovingOnGround"); if (!fn) return false;
+        bool result = false; movement->ProcessEvent(fn, &result); return result;
+    }
+    static void SetThanosMarker(AFortPlayerPawn* pawn, UFortItemDefinition* gadget, float now) {
+        if (!pawn) return;
+        FName id;
+        if (gadget) { const int offset = gadget->GetOffset("InventorySpecialActorUniqueID",false); if (offset >= 0) id = gadget->Get<FName>(offset); }
+        Put(pawn,"ItemSpecialActorID",id); Put(pawn,"ItemSpecialActorCategoryID",id);
+        Put(pawn,"BecameSpecialActorTime",gadget ? now : 0.f); pawn->ForceNetUpdate();
+    }
     static bool GroundAt(FVector& location) {
         auto fn = FindObject<UFunction>(L"/Script/Engine.KismetSystemLibrary.LineTraceSingle");
         auto library = FindObject<UObject>(L"/Script/Engine.Default__KismetSystemLibrary");
@@ -172,6 +281,7 @@ namespace InfinityShowdown {
         auto result = player.lives.Die((uint64_t(uint32_t(life.serial)) << 32) | uint32_t(life.index));
         if (result == InfinityRules::Lives::Duplicate) return true;
         player.location = pawn->GetActorLocation();
+        SetThanosMarker(pawn, nullptr, 0);
         if (Thanos == found->first) { PreviousThanos = Thanos; Thanos.clear(); player.restore = true; }
         if (result == InfinityRules::Lives::Eliminate) {
             // Remove the gadget before native final elimination; inventory dropping is disabled for this mode.
@@ -187,11 +297,13 @@ namespace InfinityShowdown {
         auto world = GetWorld();
         if (World.Get() != world || Driver.Get() != driver) {
             World = Ref(world); Driver = Ref(driver); Players.clear(); Thanos.clear(); PreviousThanos.clear(); Faulted = false; NextTick = NextSelection = 0;
+            BusStarted = BusConfigured = BusExited = false; Buses.clear(); BusStartedAt = 0;
         }
         auto game = Cast<AFortGameStateAthena>(world->GetGameState());
         if (!game) return;
         double now = game->GetServerWorldTimeSeconds(); if (now < NextTick) return; NextTick = now + .1;
         if (game->GetGamePhase() == EAthenaGamePhase::EndGame || Faulted) return;
+        auto mode = Cast<AFortGameModeAthena>(world->GetGameMode()); if (!mode) return;
         for (auto& pair : Players) pair.second.connected = false;
         auto& connections = driver->GetClientConnections();
         for (int i = 0; i < connections.Num(); ++i) {
@@ -200,6 +312,7 @@ namespace InfinityShowdown {
             auto key = Identity(controller); if (key.empty()) continue;
             auto& player = Players[key]; player.controller = Ref(controller); player.connected = true;
         }
+        TickBus(mode, game, now); HoldZone(mode);
         std::vector<std::string> eligible;
         for (auto& pair : Players) {
             auto& player = pair.second; auto controller = Cast<AFortPlayerControllerAthena>(player.controller.Get());
@@ -227,7 +340,11 @@ namespace InfinityShowdown {
                 player.kit = true; LocalTools::RestoreHealth(pawn);
                 Tell(controller,"Infinity Showdown: 10 respawns, retained loot, random Thanos. Check F8 for status messages.");
             }
-            eligible.push_back(pair.first);
+            const Ref life(pawn);
+            const auto token = (uint64_t(uint32_t(life.serial)) << 32) | uint32_t(life.index);
+            const bool firstLanding = player.landing.pawn != token || player.landing.landedAt < 0;
+            if (player.landing.Ready(token, OnGround(pawn), now)) eligible.push_back(pair.first);
+            if (firstLanding && player.landing.landedAt >= 0) Tell(controller, "Landed. You become eligible for Thanos in 20 seconds.");
         }
         if (!Thanos.empty() || eligible.empty() || now < NextSelection) return;
         NextSelection = now + 2;
@@ -247,6 +364,7 @@ namespace InfinityShowdown {
                 : "Infinity Showdown: transformation and equipment restore failed. Stop this session; see the server log."); return;
         }
         player.transformed = true; Thanos = selected;
+        SetThanosMarker(controller->GetMyFortPawn(), gauntlet, float(now));
         Broadcast("Infinity Showdown: " + selected + " is Thanos! Each player has up to 10 respawns.");
     }
 }

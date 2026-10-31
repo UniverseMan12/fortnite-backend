@@ -8,7 +8,7 @@ A private Fortnite 4.2 late-game mode with a randomly assigned Thanos role. This
 2. In Reboot, click **Start server**. The mode uses Solo teams, enables gadget support and late-game rules automatically.
 3. Friends choose **Join** and enter the host's VPN/LAN IP. The host controls the rules.
 4. Everyone presses Play to enter the island. Once everyone is connected, the host clicks **Start Bus** in Reboot.
-5. The bus takes players to the late-game arena. After the bus phase, one eligible player is chosen at random and receives the Thanos transformation directly. No gauntlet drops from the sky.
+5. The bus flies across the arena with a 16-second jump window. Land first: you become eligible for random Thanos selection **20 seconds after touching the ground**. Selection only transforms a currently grounded player. No gauntlet drops from the sky.
 
 ## Rules
 
@@ -17,7 +17,8 @@ A private Fortnite 4.2 late-game mode with a randomly assigned Thanos role. This
 - Normal equipment stays in the inventory on death. Thanos's previous inventory is stored separately; after his death the gauntlet and its abilities are removed and the previous equipment is restored. No gauntlet pickup is created.
 - A different eligible live player is randomly selected as Thanos after the previous Thanos dies or disconnects. When everyone else is waiting to respawn, selection waits. Ordinary final-elimination/winner handling remains with the game server.
 - The starter kit contains a legendary SCAR, the available blue pump (fallback to the older pump if that definition is absent), six mini shields and three medkits. Wood, stone, metal and ammo start at 999. Consumables use their normal stack sizes. The kit is granted once, not refilled after each death.
-- The mode holds the zone sequence at its late-game phase around the fourth zone center instead of closing to zero. It uses Reboot's existing late-game bus placement.
+- The arena is a fixed **150-metre radius** around the fourth zone center. The storm is paused once instead of repeatedly starting a shrink. The bus moves immediately and is removed after its flight once everyone has exited.
+- Each respawn starts a fresh 20-second landing delay. Jumping does not reset an existing landing timer, but a player cannot become Thanos while airborne.
 - Practice respawn, healing and item-spawning tools are disabled in this mode. Classic retains its original tools.
 - Disconnecting forfeits that player's participation in the current session. Reconnecting under the same player identity does not reset the life budget. Stop/restart the server for a new round.
 

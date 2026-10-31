@@ -4,6 +4,16 @@
 #include <set>
 int main() {
     using namespace InfinityRules;
+    Landing landing;
+    assert(!landing.Ready(1, false, 100)); // Skydiving must not start the timer.
+    assert(!landing.Ready(1, true, 140));
+    assert(!landing.Ready(1, true, 159.99));
+    assert(!landing.Ready(1, false, 160)); // No midair transformation after a jump.
+    assert(landing.Ready(1, true, 161)); // Jumping does not reset the first landing.
+    assert(!landing.Ready(2, true, 180)); // New pawn/life gets a fresh delay.
+    assert(landing.Ready(2, true, 200));
+    assert(BusSpeed > 0 && BusDropStart < BusDropEnd && BusDropEnd < BusFlightEnd);
+    assert((BusDropEnd - BusDropStart) * BusSpeed < ArenaRadius * 2);
     Lives a,b;
     assert(a.Die(100) == Lives::Respawn);
     assert(a.remaining == 9 && a.pending);
@@ -24,5 +34,5 @@ int main() {
     assert(Choose({},"",random).empty());
     assert(Choose({"a"},"a",random).empty());
     assert(Choose({"a"},"",random)=="a");
-    std::cout << "PASS: 10 respawns plus initial life, independent budgets, duplicate deaths, failed-spawn retries, disconnect forfeits and random role rotation.\n";
+    std::cout << "PASS: landing delay, airborne exclusion, new-life delay, bus timing, 10 respawns, independent budgets, duplicate deaths, failed-spawn retries, disconnect forfeits and random role rotation.\n";
 }
