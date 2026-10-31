@@ -36,6 +36,9 @@ int main() {
     assert(selected==std::set<std::string>({"a","c"}));
     assert(Choose({},"",random).empty());
     assert(Choose({"a"},"a",random).empty());
+    assert(Choose({"a"},"a",random,true)=="a");
+    assert(Choose({"a","b"},"a",random,true)=="b");
+    assert(Choose({},"a",random,true).empty());
     assert(Choose({"a"},"",random)=="a");
     std::cout << "PASS: landing delay, airborne exclusion, new-life delay, bus timing, 10 respawns, independent budgets, duplicate deaths, failed-spawn retries, disconnect forfeits and random role rotation.\n";
 }

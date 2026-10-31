@@ -371,7 +371,9 @@ namespace InfinityShowdown {
         }
         if (!Thanos.empty() || eligible.empty() || now < NextSelection) return;
         NextSelection = now + 2;
-        auto selected = InfinityRules::Choose(eligible, PreviousThanos, Random); if (selected.empty()) return;
+        size_t contenders = 0;
+        for (const auto& pair : Players) if (pair.second.connected && !pair.second.lives.eliminated) ++contenders;
+        auto selected = InfinityRules::Choose(eligible, PreviousThanos, Random, contenders == 1); if (selected.empty()) return;
         auto& player = Players.at(selected); auto controller = Cast<AFortPlayerControllerAthena>(player.controller.Get());
         auto inventory = controller ? controller->GetWorldInventory() : nullptr; auto gauntlet = Gauntlet();
         if (!inventory || !gauntlet || !Addresses::ApplyGadgetData || !Addresses::RemoveGadgetData || !Globals::bEnableAGIDs) {

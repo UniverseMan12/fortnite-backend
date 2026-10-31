@@ -41,10 +41,12 @@ namespace InfinityRules {
         void Disconnect() { pending = false; eliminated = true; }
     };
     template<class Generator>
-    std::string Choose(const std::vector<std::string>& eligible, const std::string& previous, Generator& random) {
+    std::string Choose(const std::vector<std::string>& eligible, const std::string& previous, Generator& random, bool alone = false) {
         std::vector<std::string> candidates;
         for (const auto& id : eligible) if (id != previous) candidates.push_back(id);
-        // A role never returns immediately to the player who just lost it.
+        // Solo testing can reassign the role after a new landing delay. In a
+        // multiplayer round, wait for another contender rather than repeat it.
+        if (candidates.empty() && alone && eligible.size() == 1) return eligible.front();
         if (candidates.empty()) return {};
         return candidates[std::uniform_int_distribution<size_t>(0, candidates.size() - 1)(random)];
     }
