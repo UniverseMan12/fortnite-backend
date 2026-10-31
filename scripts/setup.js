@@ -6,6 +6,7 @@ import { pathToFileURL } from 'node:url';
 import { ROOT } from '../src/config.js';
 import { patchBackend } from './patch-backend.js';
 import { downloadVerified } from './download.js';
+import { installBackendManifest } from './backend-dependencies.js';
 
 export const lock = JSON.parse(fs.readFileSync(path.join(ROOT, 'dependencies.lock.json'), 'utf8'));
 export function run(command, args, cwd = ROOT, quiet = false) {
@@ -22,23 +23,31 @@ export function verifyDll(name) {
   if (digest !== lock.dlls[name].toLowerCase()) throw new Error(`${name}: checksum mismatch. This file will not be loaded.`);
   return target;
 }
-export async function setup({ withGame = true, quiet = false } = {}) {
+export async function setup({ withGame = true, quiet = false, signal } = {}) {
+  signal?.throwIfAborted();
   for (const name of ['vendor', 'runtime', 'logs', 'data']) fs.mkdirSync(path.join(ROOT, name), { recursive: true });
   const backend = path.join(ROOT, 'vendor', 'LawinServer');
   const receipt = path.join(ROOT, 'runtime', 'backend-install.json');
-  if (!fs.existsSync(path.join(backend, '.git'))) {
+  const bundled = process.env.FORTNITE_LAUNCHER_BUNDLED === '1';
+  if (bundled) {
+    const bundleReceipt = JSON.parse(fs.readFileSync(path.join(backend, 'launcher-bundle.json'), 'utf8'));
+    if (bundleReceipt.commit !== lock.backend.commit || !fs.existsSync(path.join(backend, 'node_modules', '.package-lock.json'))) throw new Error('Bundled backend is incomplete. Reinstall the launcher.');
+  }
+  if (!bundled && !fs.existsSync(path.join(backend, '.git'))) {
     if (fs.existsSync(backend)) throw new Error('vendor/LawinServer exists without Git metadata. Back it up separately before running setup again.');
     run('git', ['clone', lock.backend.repository, backend], ROOT, quiet);
     run('git', ['checkout', '--detach', lock.backend.commit], backend, quiet);
   }
   let recordedCommit;
   if (fs.existsSync(receipt)) recordedCommit = JSON.parse(fs.readFileSync(receipt, 'utf8')).commit;
-  if (recordedCommit !== lock.backend.commit) {
+  if (!bundled && recordedCommit !== lock.backend.commit) {
     const revision = spawnSync('git', ['rev-parse', 'HEAD'], { cwd: backend, encoding: 'utf8', windowsHide: true });
     if (revision.status !== 0 || revision.stdout.trim() !== lock.backend.commit) throw new Error('Git is missing or the backend version does not match dependencies.lock.json. Existing files will not be overwritten automatically.');
     fs.writeFileSync(receipt, JSON.stringify({ commit: lock.backend.commit }));
   }
-  if (!fs.existsSync(path.join(backend, 'node_modules', '.package-lock.json'))) {
+  const dependenciesChanged = installBackendManifest(backend);
+  if (bundled && dependenciesChanged) throw new Error('Bundled dependency versions do not match. Reinstall the launcher.');
+  if (dependenciesChanged || !fs.existsSync(path.join(backend, 'node_modules', '.package-lock.json'))) {
     if (process.platform === 'win32') run('cmd.exe', ['/d', '/c', 'npm.cmd ci --ignore-scripts --no-audit --no-fund'], backend, quiet);
     else run('npm', ['ci', '--ignore-scripts', '--no-audit', '--no-fund'], backend, quiet);
   }
@@ -48,7 +57,7 @@ export async function setup({ withGame = true, quiet = false } = {}) {
       const file = path.join(ROOT, 'runtime', name);
       if (!fs.existsSync(file)) {
         if (!quiet) console.log(`Downloading ${name} from the pinned Reboot Launcher commit...`);
-        await downloadVerified(`https://raw.githubusercontent.com/Auties00/Reboot-Launcher/${lock.launcherCommit}/gui/dependencies/dlls/${name}`, file, { sha256: lock.dlls[name] });
+        await downloadVerified(`https://raw.githubusercontent.com/Auties00/Reboot-Launcher/${lock.launcherCommit}/gui/dependencies/dlls/${name}`, file, { sha256: lock.dlls[name], signal });
       }
       verifyDll(name);
     }
@@ -63,7 +72,7 @@ export async function setup({ withGame = true, quiet = false } = {}) {
     if (replaceServer) {
       if (!quiet) console.log('Downloading the pinned Reboot game server...');
       const archive = path.join(ROOT, 'runtime', 'reboot.zip');
-      await downloadVerified(lock.gameServerArchive, archive, { sha256: lock.gameServerArchiveSha256 });
+      await downloadVerified(lock.gameServerArchive, archive, { sha256: lock.gameServerArchiveSha256, signal });
       run('powershell.exe', ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', path.join(ROOT, 'scripts', 'extract-server.ps1')], ROOT, quiet);
     }
     verifyDll('reboot.dll');

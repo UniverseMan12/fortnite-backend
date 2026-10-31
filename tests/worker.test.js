@@ -1,0 +1,31 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import path from 'node:path';
+import os from 'node:os';
+import { fork } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
+
+test('desktop worker runs the real session coordinator and cleans up both game roles on cancel', { timeout: 15000 }, async t => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'launcher-worker-'));
+  t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+  fs.mkdirSync(path.join(root, 'src')); fs.mkdirSync(path.join(root, 'scripts'));
+  fs.writeFileSync(path.join(root, 'package.json'), '{"type":"module"}');
+  fs.copyFileSync(new URL('../src/session.js', import.meta.url), path.join(root, 'src', 'session.js'));
+  const write = (name, content) => fs.writeFileSync(path.join(root, name), content);
+  write('src/config.js', 'export const readConfig=()=>({}); export const prepareConfig=p=>({gamePath:p,version:"4.2"}); export const saveConfig=x=>x;');
+  write('src/multiplayer.js', 'export const validateHost=x=>x; export const multiplayerName=()=>"TestPlayer"; export const hostAddresses=()=>[{name:"Test VPN",address:"25.1.2.3"}];');
+  write('scripts/setup.js', 'export const setup=async()=>{}; export const verifyDll=()=>{};');
+  write('src/backend.js', 'import {EventEmitter} from "node:events"; export async function startBackend(){ const child=new EventEmitter(); child.exitCode=null; return {child,stop:async()=>process.send({type:"test-cleanup",role:"backend"})};}');
+  write('src/game.js', 'export function startGame(mode,onPhase=()=>{}) {onPhase("configure"); let close; return {ready:Promise.resolve(),closed:new Promise(resolve=>close=resolve),stop:async()=>{process.send({type:"test-cleanup",role:mode});close({code:0});}};}');
+  const child = fork(fileURLToPath(new URL('../desktop/worker.mjs', import.meta.url)), { stdio: ['ignore','ignore','pipe','ipc'] });
+  t.after(() => { if (child.exitCode === null) child.kill(); });
+  const events = [];
+  const closed = new Promise((resolve,reject) => {child.once('exit', code => code === 0 ? resolve() : reject(new Error(`Worker exited ${code}`))); child.once('error',reject);});
+  child.on('message', message => { events.push(message); if (message.type==='status' && message.message.startsWith('Fortnite ready.')) child.send({type:'stop'}); });
+  child.send({ type:'start', action:'launch', options:{mode:'host',gamePath:'C:/game'}, root });
+  await closed;
+  assert.ok(events.some(x => x.type==='addresses'));
+  assert.deepEqual(events.filter(x=>x.type==='test-cleanup').map(x=>x.role), ['client','server','backend']);
+  assert.ok(events.some(x=>x.type==='done' && x.cancelled));
+});

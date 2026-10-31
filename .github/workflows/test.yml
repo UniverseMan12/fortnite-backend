@@ -3,10 +3,12 @@ on:
   push:
     paths:
       - 'src/**'
+      - 'desktop/**'
       - 'scripts/**'
       - 'tests/**'
       - 'dependencies.lock.json'
       - 'package.json'
+      - 'package-lock.json'
       - '.github/workflows/test.yml'
   pull_request:
   workflow_dispatch:

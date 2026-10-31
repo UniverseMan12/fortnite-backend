@@ -10,6 +10,10 @@ import { patchBackend } from '../scripts/patch-backend.js';
 import { createRequire } from 'node:module';
 
 const vendor = path.join(ROOT, 'vendor', 'LawinServer');
+test('cancelled backend startup does not acquire a port or leave a process', async () => {
+  const controller = new AbortController(); controller.abort();
+  await assert.rejects(startBackend({ signal: controller.signal }), /abort/i);
+});
 async function unusedPort() {
   const server = net.createServer();
   await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));

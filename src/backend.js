@@ -13,7 +13,8 @@ export async function assertFreePort(port) {
     probe.listen(port, '127.0.0.1', () => probe.close(resolve));
   });
 }
-export async function startBackend({ port = 3551, xmppPort = 80, gameHost = '127.0.0.1', directory = path.join(ROOT, 'vendor', 'LawinServer') } = {}) {
+export async function startBackend({ port = 3551, xmppPort = 80, gameHost = '127.0.0.1', directory = path.join(ROOT, 'vendor', 'LawinServer'), signal } = {}) {
+  signal?.throwIfAborted();
   if (gameHost !== '127.0.0.1') gameHost = validateHost(gameHost);
   await assertFreePort(port); await assertFreePort(xmppPort);
   fs.mkdirSync(path.join(ROOT, 'logs'), { recursive: true });
@@ -33,6 +34,7 @@ export async function startBackend({ port = 3551, xmppPort = 80, gameHost = '127
   };
   try {
     for (let attempt = 0; attempt < 100; attempt++) {
+      signal?.throwIfAborted();
       if (error) throw error;
       if (child.exitCode !== null) throw new Error('The backend stopped. See logs/backend.log for details.');
       try {
@@ -40,7 +42,7 @@ export async function startBackend({ port = 3551, xmppPort = 80, gameHost = '127
         const status = await response.json();
         if (response.ok && status.service === 'fortnite-backend-local' && status.ready) return { child, stop, url: `http://127.0.0.1:${port}` };
       } catch {}
-      await delay(100);
+      await delay(100, undefined, { signal });
     }
     throw new Error('The backend did not become ready in time. See logs/backend.log for details.');
   } catch (error) { await stop(); throw error; }

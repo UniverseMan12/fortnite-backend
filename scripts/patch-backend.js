@@ -27,4 +27,7 @@ export function patchBackend(directory = path.join(ROOT, 'vendor', 'LawinServer'
   source = source.replace('"serviceUrl": "ws://127.0.0.1",',
     '"serviceUrl": "ws://127.0.0.1:" + (process.env.XMPP_PORT || 80),');
   fs.writeFileSync(matchmaking, source);
+  const functions = path.join(directory, 'structure', 'functions.js');
+  source = fs.readFileSync(functions, 'utf8').replace('const uuid = require("uuid");', 'const uuid = { v4: require("node:crypto").randomUUID };');
+  fs.writeFileSync(functions, source);
 }

@@ -12,3 +12,7 @@
 *.dll
 *.zip
 .env*
+/build/
+/dist/
+/test-results/
+/playwright-report/

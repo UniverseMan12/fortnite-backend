@@ -2,9 +2,24 @@
 
 A launcher for Fortnite 4.2, with local play and private VPN/LAN multiplayer using **LawinServer** and components from **Project Reboot**.
 
+## Desktop launcher
+
+The **0.2.0 desktop launcher** adds a visual home screen, **Solo / Host / Join**, a folder picker, installation checks, component preparation, live session activity, host IP display, and **Stop session**. Closing the launcher also stops its owned game processes. The existing CMD launchers remain available.
+
+For the EXE build, choose **Fortnite-Launcher-0.2.0-x64-nsis.exe** to install, or **Fortnite-Launcher-0.2.0-x64-portable.exe** to run without installing. Published assets belong on the [Releases page](https://github.com/UniverseMan12/fortnite-backend/releases); reproducible build packages are also produced by the **Build desktop launcher** workflow.
+
+1. Open the launcher and select **Setup → Browse folder**. Choose the folder containing FortniteGame and Engine.
+2. Choose **Solo**, **Host**, or **Join**. Join also needs the host's VPN/LAN IPv4 address.
+3. Click **Launch Fortnite**. Components are prepared automatically. First use needs internet access.
+4. When hosting, choose your playlist in Reboot and click **Start server**. Press **Play** in Fortnite. Start **Bus Countdown** when everyone is on the island.
+
+**EXE requirements:** Windows 10/11 x64, Fortnite 4.2 files, and the [Visual C++ x64 runtime](https://aka.ms/vc14/vc_redist.x64.exe). **Node.js and Git are not needed by EXE users**: Electron supplies the JavaScript runtime and the backend source/dependencies are included. Some pinned upstream DLLs download directly on first use. Game files and Hamachi are separate. Settings and runtime data live under `%APPDATA%/FortniteLauncher`, so the install directory can remain read-only. The portable EXE also uses this per-user data directory.
+
+The release executables are **unsigned**. See [release checks and known limits](RELEASE_QA.md) before distributing them. No automatic updater or firewall modification is included.
+
 ## Installation & downloads
 
-Use a **Windows 10/11 x64** PC with internet access for the first setup. Install the requirements below once; skip anything already installed.
+For the **source/CMD launchers**, use a **Windows 10/11 x64** PC with internet access for the first setup. Install the requirements below once; skip anything already installed. Desktop EXE users do not need Node.js or Git.
 
 | Download | What to choose / install |
 | --- | --- |

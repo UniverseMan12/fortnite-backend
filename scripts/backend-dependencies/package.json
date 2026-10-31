@@ -1,0 +1,14 @@
+{
+  "name": "lawinserver",
+  "version": "1.0.0",
+  "private": true,
+  "license": "GPL-3.0",
+  "dependencies": {
+    "cookie-parser": "1.4.7",
+    "express": "4.22.3",
+    "ini": "2.0.0",
+    "ws": "8.22.1",
+    "xml-parser": "1.2.1",
+    "xmlbuilder": "15.1.1"
+  }
+}

@@ -1,0 +1,39 @@
+name: Build desktop launcher
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'desktop/**'
+      - 'src/**'
+      - 'scripts/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'dependencies.lock.json'
+      - '.github/workflows/build-launcher.yml'
+permissions:
+  contents: read
+jobs:
+  build:
+    runs-on: windows-2022
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - run: npm run setup
+      - run: npm run package:release
+      - run: node scripts/smoke-release.mjs
+      - run: node scripts/release-files.mjs
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Fortnite-Launcher-0.2.0-Windows-x64
+          path: |
+            dist/*.exe
+            dist/SHA256SUMS.txt
+            dist/RELEASE-NOTES.md
+            dist/launcher-preview.png
+          if-no-files-found: error
+          retention-days: 90

@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
+  <title>Fortnite Launcher</title><link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="titlebar"><span class="tiny-mark">F<span>↗</span></span><span>FORTNITE LAUNCHER</span><span class="titlebar-tag">LEGACY, RELOADED.</span><div class="window-actions"><button id="minimize" aria-label="Minimize">−</button><button id="close" aria-label="Close launcher">×</button></div></header>
+  <div class="app">
+    <aside class="sidebar">
+      <div class="brand"><div class="brand-mark">F<span>↗</span></div><div>FORTNITE<small>LAUNCHER</small></div></div>
+      <div class="nav-label">YOUR SPACE</div>
+      <nav aria-label="Main navigation">
+        <button class="nav active" data-page="play"><span>◈</span>Play<span class="nav-arrow">↗</span></button>
+        <button class="nav" data-page="setup"><span>⊞</span>Setup</button>
+        <button class="nav" data-page="activity"><span>≋</span>Activity<span id="activity-count" class="count">0</span></button>
+      </nav>
+      <div class="sidebar-bottom"><div class="build-badge"><i></i><div>FORTNITE 4.2<small>CL-4072250 · WINDOWS</small></div></div><button class="subtle" data-link="github">Project on GitHub <span>↗</span></button><div class="version">v<span id="app-version">0.2.0</span><span>BY UNIVERSEMAN12</span></div></div>
+    </aside>
+    <main>
+      <div class="topline"><div><span class="eyebrow">WELCOME BACK</span><h1 id="page-title">Your next drop starts here.</h1></div><div class="status-pill"><i id="status-dot"></i><span id="top-status">STANDBY</span></div></div>
+      <section id="page-play" class="page active" aria-label="Play">
+        <div class="hero">
+          <div class="hero-grid"></div><img class="hero-art" src="island.svg" alt="A floating island beneath a violet rift">
+          <div class="hero-content"><div class="season-label"><span>CHAPTER 01</span> SEASON 04</div><h2>THE OG DAYS.<br><em>YOUR RULES.</em></h2><p>Drop back into 4.2. Play solo or bring your squad<br>to your own private server.</p><div class="hero-tags"><span>LEGACY BUILD</span><span>PRIVATE SERVERS</span></div></div>
+          <div class="hero-coordinate">35° 48′ N &nbsp; / &nbsp; THE ISLAND</div><div class="orbit-label">RECONNECT WITH<br>THE ORIGINAL.</div>
+        </div>
+        <div class="section-heading"><h3>Choose your session</h3><span>One island. Your way to play.</span></div>
+        <div class="modes" role="group" aria-label="Session mode">
+          <button class="mode selected" data-mode="solo" aria-pressed="true"><span class="mode-icon">◉</span><span><strong>Solo</strong><small>Your own playground</small></span><span class="radio"></span></button>
+          <button class="mode" data-mode="host" aria-pressed="false"><span class="mode-icon">⌘</span><span><strong>Host</strong><small>Bring your friends</small></span><span class="radio"></span></button>
+          <button class="mode" data-mode="join" aria-pressed="false"><span class="mode-icon">↗</span><span><strong>Join</strong><small>Jump into their server</small></span><span class="radio"></span></button>
+        </div>
+        <div class="join-row" id="join-row" hidden><label for="host-address">HOST VPN / LAN IPv4</label><input id="host-address" placeholder="25.x.x.x" autocomplete="off" spellcheck="false"><button class="text-button" data-link="hamachi">Get Hamachi ↗</button></div>
+        <div class="launch-row"><div class="install-summary"><div class="folder-symbol">⊞</div><div><strong id="install-title">Connect your game</strong><small id="install-subtitle">Choose the folder containing FortniteGame and Engine.</small></div><button id="edit-folder" class="text-button">Change ↗</button></div><button id="launch" class="launch-button"><span class="play-triangle">▶</span><span>Launch Fortnite<small>LET'S DROP IN</small></span><span>↗</span></button><button id="stop" class="stop-button" hidden>■ &nbsp; Stop session</button></div>
+        <div class="session-note" id="mode-note">Choose a playlist in Reboot, then click Start server. Press Play in Fortnite.</div>
+        <div id="addresses" class="addresses" hidden></div>
+      </section>
+      <section id="page-setup" class="page" aria-label="Setup" hidden>
+        <div class="panel setup-panel"><span class="eyebrow">01 / GAME INSTALLATION</span><h2>Point us to the island.</h2><p>Select the folder that contains both FortniteGame and Engine. Your build is detected automatically.</p><label for="game-path">FORTNITE FOLDER</label><div class="path-row"><input id="game-path" placeholder="Folder containing FortniteGame and Engine" spellcheck="false"><button id="browse" class="secondary">Browse folder</button></div><div class="folder-example"><span>↳ Fortnite</span><span>↳ FortniteGame</span><span>↳ Engine</span><b>4.2 only</b></div><div class="setup-actions"><button id="check" class="secondary">✓ &nbsp; Check installation</button><button id="prepare" class="secondary purple">↓ &nbsp; Prepare components</button></div></div>
+        <div class="setup-bottom"><div class="panel"><span class="eyebrow">02 / PLAY TOGETHER</span><h3>Same network. Same island.</h3><p>Join the same Hamachi network. The host shares their VPN IPv4. Friends choose Join and enter it.</p><button class="text-button" data-link="hamachi">Download Hamachi ↗</button></div><div class="panel"><span class="eyebrow">03 / THE ESSENTIALS</span><h3>A little setup. A lot of nostalgia.</h3><p>Game files are separate. Install the Visual C++ x64 runtime if Windows reports a missing DLL.</p><div class="link-row"><button class="text-button" data-link="game">Game files ↗</button><button class="text-button" data-link="runtime">Visual C++ ↗</button></div></div></div>
+      </section>
+      <section id="page-activity" class="page" aria-label="Activity" hidden>
+        <div class="activity-header"><div><span class="eyebrow">SESSION ACTIVITY</span><h2>Every step, in sight.</h2></div><button id="open-logs" class="secondary">Open logs ↗</button></div><div class="activity-list" id="activity-list"><div class="empty-state"><span>≋</span><h3>A clean slate.</h3><p>Your startup checks and session activity will appear here.</p></div></div><div class="activity-help">Need help? Check the latest error, then open the logs for details.<button class="text-button" data-link="github">Troubleshooting ↗</button></div>
+      </section>
+      <div class="session-status" role="status" aria-live="polite"><span id="status-icon">◈</span><div><strong id="status-heading">ALL SYSTEMS STANDING BY</strong><p id="status-message">Ready when you are.</p></div><span id="status-tail">4.2</span></div>
+      <div id="error-banner" class="error-banner" role="alert" hidden></div>
+    </main>
+  </div><script src="renderer.js"></script>
+</body></html>
