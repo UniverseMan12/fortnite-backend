@@ -6,6 +6,7 @@ import { startBackend } from './backend.js';
 import { startGame } from './game.js';
 import { runSession } from './session.js';
 import { folderPrompt, showStatus } from './status.js';
+import { validateHost, hostAddresses, multiplayerName } from './multiplayer.js';
 
 const controller = new AbortController();
 let rl;
@@ -19,6 +20,7 @@ async function main() {
     console.log('Paste the folder containing FortniteGame and Engine, then press Enter.');
     console.log('Setup and startup run automatically. Keep this window open.');
     console.log('Advanced: --check validates your folder; --doctor checks components; --backend starts only the backend.');
+    console.log('Multiplayer: HOST.cmd hosts a match; JOIN.cmd connects to a VPN or LAN host.');
     return;
   }
   if (Number(process.versions.node.split('.')[0]) < 22) throw new Error('Node.js 22 or newer is required.');
@@ -32,6 +34,9 @@ async function main() {
     return;
   }
   const backendOnly = process.argv.includes('--backend');
+  const host = process.argv.includes('--host'), join = process.argv.includes('--join');
+  if (host && join || backendOnly && (host || join)) throw new Error('Choose one startup mode.');
+  let gameHost = '127.0.0.1';
   if (!backendOnly) {
     const old = readConfig();
     rl = readline.createInterface({ input: process.stdin, output: process.stdout });
@@ -41,6 +46,19 @@ async function main() {
         const answer = await rl.question(folderPrompt, { signal: controller.signal });
         try { config = prepareConfig(answer.trim(), old); }
         catch (error) { showStatus(error.message, 'error'); }
+      }
+      if (join && config) {
+        gameHost = '';
+        while (!gameHost && !controller.signal.aborted) {
+          const answer = await rl.question('Host VPN or LAN IPv4: ', { signal: controller.signal });
+          try { gameHost = validateHost(answer); }
+          catch (error) { showStatus(error.message, 'error'); }
+        }
+      }
+      if (config) {
+        const name = multiplayerName(old);
+        config.multiplayerName = name;
+        if (host || join) config.username = name;
       }
     } finally { rl.close(); rl = undefined; }
     if (!config || controller.signal.aborted) return;
@@ -63,7 +81,17 @@ async function main() {
     } finally { await backend.stop(); }
     return;
   }
-  await runSession({ startBackend, startGame, status: showStatus, signal: controller.signal });
+  await runSession({
+    startBackend: () => startBackend({ gameHost }),
+    startGame: (mode, phase) => startGame(mode, phase, { multiplayer: host || join, gameHost }),
+    join, status: showStatus, signal: controller.signal,
+    onHostReady: () => {
+      if (!host) return;
+      const addresses = hostAddresses();
+      for (const { name, address } of addresses) showStatus(`${name}: ${address}`, 'info');
+      showStatus(addresses.length ? 'Friends: open JOIN.cmd and enter your host VPN IP.' : 'Connect Hamachi or your LAN so friends can join.', 'info');
+    }
+  });
 }
 main().catch(error => {
   if (!controller.signal.aborted) {

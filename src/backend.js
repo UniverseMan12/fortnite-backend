@@ -4,6 +4,7 @@ import net from 'node:net';
 import { spawn } from 'node:child_process';
 import { setTimeout as delay } from 'node:timers/promises';
 import { ROOT } from './config.js';
+import { validateHost } from './multiplayer.js';
 
 export async function assertFreePort(port) {
   await new Promise((resolve, reject) => {
@@ -12,14 +13,15 @@ export async function assertFreePort(port) {
     probe.listen(port, '127.0.0.1', () => probe.close(resolve));
   });
 }
-export async function startBackend({ port = 3551, xmppPort = 80, directory = path.join(ROOT, 'vendor', 'LawinServer') } = {}) {
+export async function startBackend({ port = 3551, xmppPort = 80, gameHost = '127.0.0.1', directory = path.join(ROOT, 'vendor', 'LawinServer') } = {}) {
+  if (gameHost !== '127.0.0.1') gameHost = validateHost(gameHost);
   await assertFreePort(port); await assertFreePort(xmppPort);
   fs.mkdirSync(path.join(ROOT, 'logs'), { recursive: true });
   const log = fs.createWriteStream(path.join(ROOT, 'logs', 'backend.log'), { flags: 'a' });
   log.write(`\n--- ${new Date().toISOString()} ---\n`);
   const child = spawn(process.execPath, ['index.js'], {
     cwd: directory, windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'],
-    env: { ...process.env, PORT: String(port), XMPP_PORT: String(xmppPort) }
+    env: { ...process.env, PORT: String(port), XMPP_PORT: String(xmppPort), LAUNCHER_GAME_HOST: gameHost }
   });
   let error;
   child.on('error', e => { error = e; });

@@ -61,3 +61,49 @@ test('local backend: login, profile, F8 hotfix, matchmaking and XMPP readiness',
     ws.once('message', data => { clearTimeout(timeout); assert.match(data.toString(), /<open/); ws.close(); resolve(); });
   });
 });
+
+test('guest Play targets the VPN host while host Play stays local; player identities are distinct', { timeout: 30000 }, async t => {
+  const temporary = fs.mkdtempSync(path.join(os.tmpdir(), 'fortnite-multiplayer-test-'));
+  const backends = [];
+  t.after(async () => {
+    await Promise.all(backends.map(backend => backend.stop()));
+    fs.rmSync(temporary, { recursive: true, force: true });
+  });
+  const instances = [];
+  for (const [name, gameHost] of [['HostPlayer', '127.0.0.1'], ['GuestPlayer', '25.42.43.44']]) {
+    const directory = path.join(temporary, name);
+    fs.cpSync(vendor, directory, { recursive: true, filter: source => !['.git', 'node_modules'].includes(path.basename(source)) });
+    fs.symlinkSync(path.join(vendor, 'node_modules'), path.join(directory, 'node_modules'), 'junction');
+    patchBackend(directory);
+    const matchmaking = path.join(directory, 'structure', 'matchmaking.js');
+    const once = fs.readFileSync(matchmaking, 'utf8');
+    patchBackend(directory);
+    assert.equal(fs.readFileSync(matchmaking, 'utf8'), once);
+    const xmppPort = await unusedPort();
+    const backend = await startBackend({ directory, port: await unusedPort(), xmppPort, gameHost });
+    backends.push(backend);
+    instances.push({ backend, name, gameHost, xmppPort });
+  }
+  const accountIds = [];
+  for (const { backend, name, gameHost, xmppPort } of instances) {
+    const headers = { 'content-type': 'application/json', 'user-agent': 'Fortnite/++Fortnite+Release-4.2-CL-4072250 Windows/10' };
+    const auth = await (await fetch(`${backend.url}/account/api/oauth/token`, {
+      method: 'POST', headers, body: JSON.stringify({ username: `${name}@local.invalid`, password: 'LocalOnly', grant_type: 'password' })
+    })).json();
+    accountIds.push(auth.account_id);
+    const ticket = await (await fetch(`${backend.url}/fortnite/api/game/v2/matchmakingservice/ticket/player/${auth.account_id}?bucketId=123:EU:solo`, { headers })).json();
+    assert.equal(ticket.serviceUrl, `ws://127.0.0.1:${xmppPort}`);
+    const match = await (await fetch(`${backend.url}/fortnite/api/matchmaking/session/local`, { headers })).json();
+    assert.equal(match.serverAddress, gameHost);
+    assert.equal(match.serverPort, 7777);
+    const profile = await (await fetch(`${backend.url}/fortnite/api/game/v2/profile/${auth.account_id}/client/QueryProfile?profileId=athena&rvn=-1`, { method: 'POST', headers, body: '{}' })).json();
+    assert.equal(profile.profileChanges[0].profile.profileId, 'athena');
+  }
+  assert.deepEqual(accountIds, ['HostPlayer', 'GuestPlayer']);
+  // A later solo launch must not inherit the guest route from any saved INI file.
+  await backends[1].stop();
+  const restarted = await startBackend({ directory: path.join(temporary, 'GuestPlayer'), port: await unusedPort(), xmppPort: await unusedPort() });
+  backends.push(restarted);
+  const match = await (await fetch(`${restarted.url}/fortnite/api/matchmaking/session/local`)).json();
+  assert.equal(match.serverAddress, '127.0.0.1');
+});

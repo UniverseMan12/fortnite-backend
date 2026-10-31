@@ -1,6 +1,6 @@
 # Fortnite Backend
 
-A launcher for a local Fortnite legacy setup, using **LawinServer** and components from **Project Reboot**.
+A launcher for Fortnite 4.2, with local play and private VPN/LAN multiplayer using **LawinServer** and components from **Project Reboot**.
 
 ## Installation & downloads
 
@@ -13,6 +13,7 @@ Use a **Windows 10/11 x64** PC with internet access for the first setup. Install
 | **[Microsoft Visual C++ Runtime — x64](https://aka.ms/vc14/vc_redist.x64.exe)** | Run the installer and choose Install or Repair if needed. [Microsoft download information](https://learn.microsoft.com/en-us/cpp/windows/latest-supported-vc-redist). |
 | **[Fortnite 4.2 — Google Drive](https://drive.google.com/file/d/1m8VEUcKnxA0UYHt5-txPbRhfbn0OVhEm/view?usp=sharing)** | Download and fully extract the game. Link supplied by the project owner. |
 | **[Launcher — Download ZIP](https://github.com/UniverseMan12/fortnite-backend/archive/refs/heads/main.zip)** | Extract the ZIP, then open the folder containing **START.cmd**. |
+| [Hamachi](https://vpn.net/) — for multiplayer over the internet | Install on every player's PC and join the same private network. An existing Radmin VPN connection or the same LAN also works with the launcher. |
 | [7-Zip](https://www.7-zip.org/download.html) — optional | Choose **64-bit Windows x64** if you need an extractor for the game archive. |
 | [DirectX legacy runtime](https://www.microsoft.com/en-us/download/details.aspx?id=35) — if needed | Install if the game reports missing legacy DirectX files such as **XINPUT1_3.dll** or **D3DX9_43.dll**. |
 
@@ -45,6 +46,29 @@ Selecting either subfolder also works: the launcher finds the common parent auto
 
 **Compatibility:** Automatic startup is currently limited to Fortnite **4.2**. Login, the lobby and F8 were tested with **CL-4072250**; the project owner also reports successful local gameplay. This launcher does not support every Fortnite version.
 
+## Multiplayer with friends
+
+Use the same **Fortnite 4.2 CL-4072250** build and the latest launcher on every PC.
+
+1. Install **[Hamachi](https://vpn.net/)** on each PC. The host creates a private network; friends join it with its network ID and password. Keep Hamachi connected. On the same LAN, skip this step.
+2. **Host:** open **HOST.cmd** and enter the game folder.
+3. In Reboot, choose the playlist. **Players required to start the match** defaults to **2**; increase it to your group's size before clicking **Start server**.
+4. Wait for **Server listening** and **Joinable: true** in Reboot. Give friends your Hamachi **IPv4** address, also listed next to the Hamachi adapter in the launcher.
+5. **Friends:** open **JOIN.cmd**, enter their own game folder, then the host's VPN IPv4 address. No port or `http://` prefix is needed. Guests do not start another game server.
+6. Everyone presses **Play** in their lobby. Keep the launchers and VPN open. The host must stay connected for the match to continue.
+
+Each installation gets a persistent, distinct player name automatically. Download a fresh launcher ZIP for friends; do not copy your config.local.json to their PC. If it was copied, remove just the `multiplayerName` field from their config.local.json before restarting to generate a new identity.
+
+If Play returns to the lobby, check that the host is still joinable and the round has not already started or ended. In the guest's **F8** console you can also enter `open HOST_IP:7777`, replacing `HOST_IP` with the host's VPN address. The host uses `open 127.0.0.1:7777`.
+
+**Connection troubleshooting:** the host's Windows firewall must allow the game EXE to receive **UDP 7777** from your friends' VPN addresses, on the network profile used by the VPN adapter. In Windows Defender Firewall with Advanced Security, create an inbound Custom rule for `FortniteClient-Win64-Shipping.exe`, UDP local port 7777, scoped to those remote addresses. Do not disable the firewall. No router port forwarding is needed for peers already connected through the VPN. The launcher does not change firewall rules automatically.
+
+The HTTP login backend and XMPP stay on each player's own PC; only game traffic goes to the host. Inventory/profile changes remain local. This provides a shared game server, without shared Epic friends lists, lobby parties or public matchmaking. Guests need their own launcher requirements but only run one Fortnite process.
+
+The host's **Local tools** continue to target the host player. Practice respawn starts **off** in HOST.cmd so normal eliminations can finish a multiplayer match; you can enable it in Reboot for practice. Guests do not receive automatic operator permissions. Keep **Private IPs are operator** off unless you deliberately want to grant those permissions.
+
+Automated checks cover separate player identities, VPN matchmaking addresses, guest startup/cleanup and switching back to local play. A real match between two PCs over Hamachi has not yet been verified. **START.cmd** still starts local play.
+
 ## Local tools
 
 After the server starts, open **Local tools** at the top of the Reboot window. Join your match before using the buttons. Controls are grouped into **Player**, **Items** and **Building & ammo** tabs. The connection indicator shows whether your player is available.
@@ -65,7 +89,7 @@ After the server starts, open **Local tools** at the top of the Reboot window. J
 | Clear spawned loot | Removes only pickups created by these local tools; keeps map loot and items already collected. |
 | Infinite ammo / materials | Replenishes supplies every half second, including the equipped weapon's magazine. |
 
-**Practice respawn** is enabled by default. It keeps your inventory and prevents your local death from ending the round, so you can click **Respawn me** after dying. Turn it off for normal elimination behavior. It cannot reopen a match that has already ended. Respawning as Thanos or preserving special transformations is not guaranteed.
+**Practice respawn** is enabled by default in START.cmd (disabled by default in HOST.cmd). It keeps your inventory and prevents your local death from ending the round, so you can click **Respawn me** after dying. Turn it off for normal elimination behavior. It cannot reopen a match that has already ended. Respawning as Thanos or preserving special transformations is not guaranteed.
 
 These controls require exactly one loopback-connected player. Spawned pickups are limited to 100 outstanding items, and actions are rate-limited to avoid accidental click spam. Saved positions reset when you leave. You can also press F8 and enter:
 
@@ -126,6 +150,8 @@ Detailed output is saved in logs/ instead of filling the launcher. Game-log path
 
 ```powershell
 npm start                  # Launcher
+node src/cli.js --host      # Host a VPN/LAN match
+node src/cli.js --join      # Join a VPN/LAN host
 node src/cli.js --check     # Check a selected folder without starting services
 node src/cli.js --help      # Short help
 npm run doctor             # Check saved installation and DLL hashes
@@ -140,11 +166,11 @@ The coordinator waits for backend HTTP/XMPP readiness, the user's Start server a
 
 GitHub Actions runs launcher and backend tests on Windows for code changes. Download tests cover interrupted transfers, HTTP errors, checksum mismatches, size limits and cancellation. Installer tests verify that invalid archives preserve the old DLL and successful replacement creates its backup.
 
-HTTP backend: http://127.0.0.1:3551. XMPP/matchmaker: 127.0.0.1:80. Game target: 127.0.0.1:7777 over UDP. HTTP and XMPP bind to loopback. In the 4.2 test, Reboot listened on 0.0.0.0:7777 despite -MULTIHOME=127.0.0.1, so the host's network binding is not restricted to loopback. No firewall rules, hosts-file entries or system certificates are changed.
+HTTP backend: http://127.0.0.1:3551. XMPP/matchmaker: 127.0.0.1:80. Both bind only to loopback on every PC. The game target is 127.0.0.1:7777 for the host and the entered VPN/LAN IPv4:7777 for guests, over UDP. Reboot listens on all interfaces; use Windows firewall scope to control access. No firewall rules, hosts-file entries or system certificates are changed. The guest target is passed to the backend for that process only; a later local launch returns to loopback automatically.
 
 The launcher loads Reboot components into its own game processes. Windows job objects close those game and companion processes when their helper exits. Existing game EXEs are not patched or replaced. Legacy companion processes remain suspended.
 
-LawinServer V1 is a local single-user emulator with shared profile data, not a public multi-user platform. Items, levels and V-Bucks are local test data.
+LawinServer V1 remains a local single-user emulator on each PC. Multiplayer shares the Reboot game server, not backend profiles. Items, levels and V-Bucks are local test data.
 
 ## Project files
 

@@ -19,4 +19,12 @@ export function patchBackend(directory = path.join(ROOT, 'vendor', 'LawinServer'
   // Translate the message left by an earlier local installation.
   source = source.replace('XMPP konnte nicht starten:', 'XMPP failed to start:');
   fs.writeFileSync(xmpp, source);
+  const matchmaking = path.join(directory, 'structure', 'matchmaking.js');
+  source = fs.readFileSync(matchmaking, 'utf8');
+  source = source.replace('"serverAddress": config.GameServer.ip,',
+    '"serverAddress": process.env.LAUNCHER_GAME_HOST || "127.0.0.1",');
+  source = source.replace('"serverPort": Number(config.GameServer.port),', '"serverPort": 7777,');
+  source = source.replace('"serviceUrl": "ws://127.0.0.1",',
+    '"serviceUrl": "ws://127.0.0.1:" + (process.env.XMPP_PORT || 80),');
+  fs.writeFileSync(matchmaking, source);
 }

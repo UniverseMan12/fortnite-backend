@@ -49,7 +49,7 @@ try {
     $playerName = $config.username
     if ($Mode -eq 'server') { $playerName = 'LocalHost' }
     $arguments = '-epicapp=Fortnite -epicenv=Prod -epiclocale=en-us -epicportal -skippatchcheck -nobe -AUTH_TYPE=epic -AUTH_LOGIN=' + $playerName + '@local.invalid -AUTH_PASSWORD=LocalOnly -log -forcelogflush -ABSLOG="' + $log + '"'
-    if ($Mode -eq 'server') { $arguments += ' -nosplash -nosound -nullrhi -windowed -port=7777 -MULTIHOME=127.0.0.1' }
+    if ($Mode -eq 'server') { $arguments += ' -nosplash -nosound -nullrhi -windowed -port=7777' }
     else { $arguments += ' -windowed -ResX=1280 -ResY=720' }
     $gameId = $session.Start($exe, $arguments, $false, $working, ($Mode -eq 'server'))
     Write-Output "[$Mode] Fortnite started (PID $gameId). Connecting to the local backend..."
@@ -127,7 +127,9 @@ try {
         Write-Output 'LAUNCHER_READY:server'
     } else {
         $session.LoadLibrary($gameId, (Join-Path $projectRoot 'runtime\console.dll'))
-        Write-Output '[client] Console loaded. Once the host is ready: press F8, type open 127.0.0.1:7777, press Enter.'
+        $hostAddress = '127.0.0.1'
+        if ($env:LAUNCHER_GAME_HOST) { $hostAddress = $env:LAUNCHER_GAME_HOST }
+        Write-Output "[client] Console loaded. Once the host is ready: press F8, type open ${hostAddress}:7777, press Enter."
         Write-Output 'LAUNCHER_READY:client'
     }
     if ($Mode -eq 'server') {

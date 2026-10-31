@@ -84,3 +84,32 @@ test('backend exit while host starts prevents client launch', async () => {
   assert.deepEqual(f.started, ['backend', 'server']);
   assert.deepEqual(f.stopped, ['server', 'backend']);
 });
+
+test('joining starts only a local backend and client, and closes both on exit', async () => {
+  const f = fixture();
+  let hostReady = false;
+  const running = runSession({ ...f.options, join: true, onHostReady: () => { hostReady = true; } });
+  await tick();
+  assert.deepEqual(f.started, ['backend', 'client']);
+  f.games.client.becomeReady(); await tick();
+  f.games.client.finish({ code: 0 }); await running;
+  assert.equal(hostReady, false);
+  assert.deepEqual(f.stopped, ['client', 'backend']);
+});
+
+test('cancelling a guest during client startup releases all owned processes', async () => {
+  const f = fixture();
+  const running = runSession({ ...f.options, join: true });
+  const failed = assert.rejects(running, /cancelled/);
+  await tick(); f.controller.abort(); await failed;
+  assert.deepEqual(f.stopped, ['client', 'backend']);
+});
+
+test('guest client failure releases its backend without starting a server', async () => {
+  const f = fixture();
+  const running = runSession({ ...f.options, join: true });
+  const failed = assert.rejects(running, /client failed/);
+  await tick(); f.games.client.fail(new Error('client failed')); await failed;
+  assert.deepEqual(f.started, ['backend', 'client']);
+  assert.deepEqual(f.stopped, ['client', 'backend']);
+});
