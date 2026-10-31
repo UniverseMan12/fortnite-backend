@@ -30,6 +30,11 @@ try {
     if ($health.service -ne 'fortnite-backend-local' -or -not $health.ready) { throw 'The local backend is not ready.' }
     if ($Mode -eq 'server' -and (Get-NetUDPEndpoint -LocalPort 7777 -ErrorAction SilentlyContinue)) { throw 'UDP port 7777 is already in use.' }
     Add-Type -Path (Join-Path $projectRoot 'src\NativeProcess.cs')
+    Add-Type -Path (Join-Path $projectRoot 'src\LegacyDisplay.cs')
+    $desktopSize = [LegacyDisplay]::DesktopSize()
+    $settingsFile = Join-Path $env:LOCALAPPDATA 'FortniteGame\Saved\Config\WindowsClient\GameUserSettings.ini'
+    $settingsBackup = [LegacyDisplay]::Repair($settingsFile, $desktopSize[0], $desktopSize[1])
+    if ($settingsBackup) { Write-Output "[$Mode] Startup resolution adjusted for Fortnite 4.2. Original settings: $settingsBackup" }
     $session = New-Object LocalGameSession
     # Work around legacy Unreal/OpenSSL initialization issues on newer Intel CPUs.
     $env:OPENSSL_ia32cap = '~0x20000000'
