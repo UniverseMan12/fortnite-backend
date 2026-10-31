@@ -3,7 +3,9 @@ export function validateOptions(value) {
   if (typeof value.gamePath !== 'string' || !value.gamePath.trim() || value.gamePath.length > 2048) throw new Error('Choose the folder containing FortniteGame and Engine.');
   const host = String(value.host ?? '').trim();
   if (host.length > 64) throw new Error('The host address is too long.');
-  return { mode: value.mode, gamePath: value.gamePath.trim(), host };
+  const gameMode = value.gameMode ?? 'classic';
+  if (!['classic', 'infinity'].includes(gameMode)) throw new Error('Choose Classic or Infinity Showdown.');
+  return { mode: value.mode, gamePath: value.gamePath.trim(), host, gameMode };
 }
 
 export const links = Object.freeze({

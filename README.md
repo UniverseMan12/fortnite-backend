@@ -1,5 +1,9 @@
 # Fortnite Backend
 
+## Infinity Showdown alpha
+
+The development branch adds **Classic / Infinity Showdown** to the launcher. The host can start a small late-game arena with a random Thanos, ten additional respawns per player, retained equipment and a starter kit with 999 materials/ammo. Friends join the host's VPN as before. See [the mode guide](INFINITY_SHOWDOWN.md) for setup, exact rules and in-game testing limits. This is experimental server code; the stable 0.3.1 release does not contain this mode.
+
 A launcher for Fortnite 4.2, with local play and private VPN/LAN multiplayer using **LawinServer** and components from **Project Reboot**.
 
 ## Desktop launcher

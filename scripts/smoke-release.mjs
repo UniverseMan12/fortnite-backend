@@ -16,7 +16,8 @@ try {
   app = await electron.launch({ executablePath:process.env.LAUNCHER_PACKAGED_EXE || path.join(ROOT,'dist/win-unpacked/Fortnite Launcher.exe'),env });
   const page = await app.firstWindow();
   const errors=[];page.on('pageerror',error=>errors.push(error.message));
-  await expect(page.locator('#app-version')).toHaveText('0.3.1');
+  await expect(page.locator('#app-version')).toHaveText('0.4.0-alpha.1');
+  if (process.env.LAUNCHER_SMOKE_RULES === 'infinity') await page.locator('[data-rules="infinity"]').click();
   await page.locator('[data-page="setup"]').click();
   await page.locator('#game-path').fill(process.env.LAUNCHER_SMOKE_GAME || fakeGame);
   await page.locator('#check').click();

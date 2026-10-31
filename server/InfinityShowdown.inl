@@ -7,7 +7,7 @@
 
 namespace InfinityShowdown {
     using Ref = LocalTools::TrackedObject;
-    struct SavedItem { Ref definition; int count = 0, ammo = -1; };
+    struct SavedItem { Ref definition; int count = 0, ammo = -1; std::string path; };
     struct Player {
         Ref controller, protectedPawn;
         InfinityRules::Lives lives;
@@ -40,7 +40,10 @@ namespace InfinityShowdown {
         Report(text);
         for (auto& pair : Players) if (pair.second.connected) Tell(Cast<AFortPlayerController>(pair.second.controller.Get()), text);
     }
-    static UFortItemDefinition* Gauntlet() { return FindObject<UFortItemDefinition>("AGID_CarminePack", nullptr, ANY_PACKAGE); }
+    static UFortItemDefinition* Gauntlet() {
+        auto item = FindObject<UFortItemDefinition>("AGID_CarminePack", nullptr, ANY_PACKAGE);
+        return item ? item : LoadObject<UFortItemDefinition>(L"/Game/Athena/Items/Gameplay/BackPacks/CarminePack/AGID_CarminePack.AGID_CarminePack");
+    }
     void GadgetApplied(AFortPlayerController* controller, UFortItemDefinition* definition, bool success) {
         if (Enabled.load() && controller == Assigning && definition == AssigningDefinition) AssignmentSucceeded = success;
     }
@@ -50,7 +53,7 @@ namespace InfinityShowdown {
         for (int i = 0; i < items.Num(); ++i) {
             auto instance = items.at(i); if (!instance) continue;
             auto entry = instance->GetItemEntry(); auto def = entry->GetItemDefinition();
-            if (def && def != Gauntlet()) saved.push_back({ Ref(def), entry->GetCount(), entry->GetLoadedAmmo() });
+            if (def && def != Gauntlet()) saved.push_back({ Ref(def), entry->GetCount(), entry->GetLoadedAmmo(), def->GetPathName() });
         }
         return saved;
     }
@@ -62,16 +65,24 @@ namespace InfinityShowdown {
         for (const auto& item : remove) inventory->RemoveItem(item.first, nullptr, item.second, true);
         inventory->Update();
     }
-    static void RestoreEquipment(AFortPlayerControllerAthena* controller, Player& player) {
-        if (!player.restore) return;
-        auto inventory = controller->GetWorldInventory(); if (!inventory) return;
-        RemoveInventory(inventory);
+    static bool RestoreEquipment(AFortPlayerControllerAthena* controller, Player& player) {
+        if (!player.restore) return true;
+        auto inventory = controller ? controller->GetWorldInventory() : nullptr; if (!inventory) return false;
+        std::vector<UFortItemDefinition*> definitions;
         for (const auto& item : player.equipment) {
             auto def = Cast<UFortItemDefinition>(item.definition.Get());
-            if (def) inventory->AddItem(def, nullptr, item.count, item.ammo);
+            if (!def) { auto name = std::wstring(item.path.begin(),item.path.end()); def = LoadObject<UFortItemDefinition>(name.c_str()); }
+            if (!def) { Report("Waiting for an equipment asset to reload. The saved inventory is retained."); return false; }
+            definitions.push_back(def);
+        }
+        RemoveInventory(inventory);
+        for (size_t i = 0; i < player.equipment.size(); ++i) {
+            const auto& item = player.equipment[i];
+            inventory->AddItem(definitions[i], nullptr, item.count, item.ammo);
+            if (!inventory->FindItemInstance(definitions[i])) return false;
         }
         inventory->Update(); player.restore = false; player.transformed = false;
-        player.equipment.clear();
+        player.equipment.clear(); return true;
     }
     static bool AddKit(AFortPlayerControllerAthena* controller) {
         auto inventory = controller->GetWorldInventory(); if (!inventory) return false;
@@ -122,7 +133,7 @@ namespace InfinityShowdown {
         if (!mode || !state || !spawn || !controller->GetWorldInventory()) return false;
         auto old = Ref(controller->GetMyFortPawn());
         // Remove Thanos abilities before spawning a normal pawn; never drop the gauntlet.
-        RestoreEquipment(controller, player);
+        if (!RestoreEquipment(controller, player)) return false;
         auto location = ArenaCenter(mode, player.location);
         std::uniform_real_distribution<float> angle(0.f, 6.2831853f);
         float direction = angle(Random); location.X += std::cos(direction)*1200; location.Y += std::sin(direction)*1200;
@@ -184,7 +195,7 @@ namespace InfinityShowdown {
         for (auto& pair : Players) {
             auto& player = pair.second; auto controller = Cast<AFortPlayerControllerAthena>(player.controller.Get());
             if (!player.connected || !controller) {
-                player.lives.Disconnect();
+                if (game->GetGamePhase() >= EAthenaGamePhase::Aircraft) player.lives.Disconnect();
                 if (Thanos == pair.first) { PreviousThanos = Thanos; Thanos.clear(); }
                 continue;
             }

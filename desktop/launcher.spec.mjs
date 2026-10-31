@@ -9,7 +9,7 @@ test.beforeEach(async () => {
   const env = { ...process.env, LAUNCHER_TEST_DATA: userData }; delete env.ELECTRON_RUN_AS_NODE;
   app = await electron.launch({ args: ['.'], env });
   page = await app.firstWindow();
-  await expect(page.locator('#app-version')).toHaveText('0.3.1');
+  await expect(page.locator('#app-version')).toHaveText('0.4.0-alpha.1');
 });
 test.afterEach(async () => { await app?.close(); fs.rmSync(userData, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 }); });
 
@@ -36,6 +36,22 @@ test('invalid installation fails visibly and allows another attempt', async () =
   await expect(page.locator('#activity-list')).toContainText('missing FortniteGame');
   const result = await page.evaluate(() => window.launcher.link('file:///C:/Windows').catch(e => e.message));
   expect(result).toBe('Unknown link.');
+});
+
+test('Infinity Showdown selects hosting and joining leaves rules to the host', async () => {
+  await page.locator('[data-rules="infinity"]').click();
+  await expect(page.locator('[data-mode="host"]')).toHaveAttribute('aria-pressed','true');
+  await expect(page.locator('#rules-description')).toContainText('10 respawns');
+  await expect(page.locator('#mode-note')).toContainText('click Start Bus');
+  await page.emulateMedia({reducedMotion:'reduce'});
+  await page.locator('main').evaluate(el=>el.scrollTop=0);
+  await page.screenshot({path:'test-results/infinity-showdown.png'});
+  await page.locator('[data-mode="join"]').click();
+  await expect(page.locator('[data-rules="infinity"]')).toBeDisabled();
+  await expect(page.locator('#rules-description')).toContainText('Your host chooses');
+  await page.locator('[data-mode="host"]').click();
+  await page.locator('[data-rules="classic"]').click();
+  await expect(page.locator('#mode-note')).toContainText('Start Bus Countdown');
 });
 
 test('renderer has no Node access and blocks injected script markup in errors', async () => {

@@ -16,7 +16,7 @@
         <button class="nav" data-page="setup"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 17h16M8 4v6m8 4v6"/></svg><span>Setup</span></button>
         <button class="nav" data-page="activity"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12h5l3-8 4 16 3-8h5"/></svg><span>Activity</span><span id="activity-count" class="count">0</span></button>
       </nav>
-      <div class="sidebar-bottom"><div class="build-badge"><i></i><span>4.2</span></div><button class="subtle" data-link="github" aria-label="Project on GitHub">GitHub ↗</button><div class="version">v<span id="app-version">0.3.1</span></div></div>
+      <div class="sidebar-bottom"><div class="build-badge"><i></i><span>4.2</span></div><button class="subtle" data-link="github" aria-label="Project on GitHub">GitHub ↗</button><div class="version">v<span id="app-version">0.4.0-alpha.1</span></div></div>
     </aside>
     <main>
       <div class="topline"><div><span class="eyebrow">FORTNITE / CHAPTER 01</span><h1 id="page-title">Back to the island.</h1></div><div class="status-pill"><i id="status-dot"></i><span id="top-status">STANDBY</span></div></div>
@@ -27,6 +27,12 @@
           <div class="hero-content"><div class="season-label"><span>SEASON 04</span><span>THE ORIGINAL DROP</span></div><h2>OLD ISLAND.<br><em>NEW RULES.</em></h2><p>Your island. Your squad. Your server.<br>Drop back into the days that started it all.</p></div>
           <div class="hero-bottom"><div class="hero-launch"><button id="launch" class="launch-button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m8 5 11 7-11 7z"/></svg><span>Launch Fortnite</span><span class="launch-arrow">↗</span></button><button id="stop" class="stop-button" hidden>■ &nbsp; Stop session</button><span id="hero-mode" class="hero-mode">SOLO SESSION</span></div><div class="hero-stamp"><span>EST. 2018</span><strong>4.2</strong><span>CL-4072250</span></div></div>
         </div>
+        <div class="rules-picker" role="group" aria-label="Game mode">
+          <span class="eyebrow">GAME MODE</span>
+          <button class="rules-choice selected" data-rules="classic" aria-pressed="true">Classic</button>
+          <button class="rules-choice" data-rules="infinity" aria-pressed="false"><span>✦</span> Infinity Showdown <small>EXPERIMENTAL</small></button>
+        </div>
+        <div id="rules-description" class="rules-description">Choose a playlist in Reboot and play your way.</div>
         <div class="section-heading"><h3><span>01</span> Choose your session</h3><span>HOW WILL YOU DROP IN?</span></div>
         <div class="modes" role="group" aria-label="Session mode">
           <button class="mode selected" data-mode="solo" aria-pressed="true"><span class="mode-icon"><svg viewBox="0 0 32 32" aria-hidden="true"><circle cx="16" cy="11" r="5"/><path d="M6 28v-4a10 10 0 0 1 20 0v4"/></svg></span><span><strong>Solo</strong><small>Your own playground</small></span><span class="radio"></span><span class="mode-number" aria-hidden="true">01</span></button>

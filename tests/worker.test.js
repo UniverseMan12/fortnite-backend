@@ -17,15 +17,16 @@ test('desktop worker runs the real session coordinator and cleans up both game r
   write('src/multiplayer.js', 'export const validateHost=x=>x; export const multiplayerName=()=>"TestPlayer"; export const hostAddresses=()=>[{name:"Test VPN",address:"25.1.2.3"}];');
   write('scripts/setup.js', 'export const setup=async()=>{}; export const verifyDll=()=>{};');
   write('src/backend.js', 'import {EventEmitter} from "node:events"; export async function startBackend(){ const child=new EventEmitter(); child.exitCode=null; return {child,stop:async()=>process.send({type:"test-cleanup",role:"backend"})};}');
-  write('src/game.js', 'export function startGame(mode,onPhase=()=>{}) {onPhase("configure"); let close; return {ready:Promise.resolve(),closed:new Promise(resolve=>close=resolve),stop:async()=>{process.send({type:"test-cleanup",role:mode});close({code:0});}};}');
+  write('src/game.js', 'export function startGame(mode,onPhase=()=>{},options={}) {process.send({type:"test-game",role:mode,gameMode:options.gameMode});onPhase("configure"); let close; return {ready:Promise.resolve(),closed:new Promise(resolve=>close=resolve),stop:async()=>{process.send({type:"test-cleanup",role:mode});close({code:0});}};}');
   const child = fork(fileURLToPath(new URL('../desktop/worker.mjs', import.meta.url)), { stdio: ['ignore','ignore','pipe','ipc'] });
   t.after(() => { if (child.exitCode === null) child.kill(); });
   const events = [];
   const closed = new Promise((resolve,reject) => {child.once('exit', code => code === 0 ? resolve() : reject(new Error(`Worker exited ${code}`))); child.once('error',reject);});
   child.on('message', message => { events.push(message); if (message.type==='status' && message.message.startsWith('Fortnite ready.')) child.send({type:'stop'}); });
-  child.send({ type:'start', action:'launch', options:{mode:'host',gamePath:'C:/game'}, root });
+  child.send({ type:'start', action:'launch', options:{mode:'host',gamePath:'C:/game',gameMode:'infinity'}, root });
   await closed;
   assert.ok(events.some(x => x.type==='addresses'));
+  assert.ok(events.some(x => x.type==='test-game' && x.role==='server' && x.gameMode==='infinity'));
   assert.deepEqual(events.filter(x=>x.type==='test-cleanup').map(x=>x.role), ['client','server','backend']);
   assert.ok(events.some(x=>x.type==='done' && x.cancelled));
 });
