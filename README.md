@@ -25,7 +25,42 @@ Folder you select/
 
 Selecting either subfolder also works: the launcher finds the common parent automatically. No Epic credentials or player-name entry are needed.
 
-**Compatibility:** Automatic startup is currently limited to Fortnite **4.2**. Login, the lobby and F8 were tested with **CL-4072250**. A playable local match has **not yet been verified end to end**. A listening host port alone does not prove a match is ready. This launcher does not support every Fortnite version.
+**Compatibility:** Automatic startup is currently limited to Fortnite **4.2**. Login, the lobby and F8 were tested with **CL-4072250**; the project owner also reports successful local gameplay. This launcher does not support every Fortnite version.
+
+## Local tools
+
+After the server starts, open **Local tools** at the top of the Reboot window. Join your match before using the buttons.
+
+| Control | Effect |
+| --- | --- |
+| Respawn me | Creates a new pawn near your previous position with full health and shield. |
+| Heal + shield | Restores 100 health and shield while alive. |
+| Spawn chest loot | Drops a random chest's loot in front of you. |
+| Give starter kit | Adds an assault rifle, shotgun, ammunition and materials. |
+| Refill materials / ammo | Replenishes supplies once. |
+| Clear player builds | Removes player-built structures; keeps map buildings. |
+| Infinite ammo / materials | Replenishes supplies every half second, including the equipped weapon's magazine. |
+
+**Practice respawn** is enabled by default. It keeps your inventory and prevents your local death from ending the round, so you can click **Respawn me** after dying. Turn it off for normal elimination behavior. It cannot reopen a match that has already ended. Respawning as Thanos or preserving special transformations is not guaranteed.
+
+These controls target your loopback-connected player. If more than one local client joins, use F8 to target yourself:
+
+```text
+cheat local respawn
+cheat local heal
+cheat local loot
+cheat local kit
+cheat local materials
+cheat local ammo
+cheat local clearbuilds
+cheat local infiniteammo on
+cheat local infinitematerials on
+cheat local practice on
+```
+
+Use `off` instead of `on` to disable a toggle. The message under the buttons reports the result or explains why an action is unavailable. These are local practice tools; they do not add support for other game versions.
+
+Validation: the customized server builds successfully, starts on 4.2 and displays the new controls. The individual actions, including respawn after death, still need in-match verification.
 
 ## Requirements
 
@@ -44,7 +79,7 @@ First-time setup needs internet and may take a few minutes. Pinned components ar
 | Setup fails | Read logs/setup.log and the error shown in the launcher. |
 | Server does not start | Read logs/server-helper.log. The client will not open if host startup fails. |
 | Fortnite does not open | Read logs/client-helper.log and logs/backend.log. |
-| Play returns to the lobby | Check the Reboot window for Joinable: true. Hosting is still unverified; an open port is not a guarantee of gameplay. |
+| Play returns to the lobby | Check the Reboot window for Joinable: true and check the helper logs for a host failure. |
 | A download has expired | Review a replacement build and update dependencies.lock.json with its checksum. |
 
 If the host shows **Joinable: true**, you can also press **F8** in Fortnite and enter **open 127.0.0.1:7777**. This connects to the existing host; it cannot start a missing server. If Medal also uses F8, its clip notification may appear.
@@ -77,6 +112,7 @@ LawinServer V1 is a local single-user emulator with shared profile data, not a p
 
 - src/: launcher, validation and process management.
 - scripts/: setup, backend adaptations and Windows game startup.
+- server/: game-thread actions and Reboot UI for local practice tools.
 - tests/: installation, orchestration and backend integration checks.
 - dependencies.lock.json: pinned sources and DLL hashes.
 - [THIRD_PARTY.md](THIRD_PARTY.md): upstream sources, licenses and references.

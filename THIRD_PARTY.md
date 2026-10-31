@@ -8,7 +8,7 @@ Research and local setup: October 31, 2026.
 | Startup sequence and DLL references | [Auties00/Reboot-Launcher](https://github.com/Auties00/Reboot-Launcher) | Commit `c6f82298b167ef2076bb59dc621f13dc5bd8d390`; consult each upstream component's license terms |
 | Game server | [Milxnor/Project-Reboot-3.0](https://github.com/Milxnor/Project-Reboot-3.0) | Build commit `10c659028ad9d6816f78226483f11a884bf81f57`, BSD-3-Clause according to upstream |
 
-DLLs are not committed to the repository. Download locations and checksums are recorded in `dependencies.lock.json`. The customized Reboot DLL is built as a GitHub Actions artifact from the pinned upstream source plus `scripts/patch-reboot.js`; its archive includes the upstream BSD-3-Clause license. The patch removes the automatic countdown, adds playlist presets and a Start server button, and signals startup phases to the launcher. Checksums identify the pinned files; they do not establish general safety or compatibility with every game build.
+DLLs are not committed to the repository. Download locations and checksums are recorded in `dependencies.lock.json`. The customized Reboot DLL is built as a GitHub Actions artifact from the pinned upstream source plus `scripts/patch-reboot.js`, `scripts/patch-local-tools.js` and `server/`; its archive includes the upstream BSD-3-Clause license. The patches add manual startup, playlist selection and local practice tools. UI actions are queued onto the game's network tick; practice death handling keeps the local round open. Checksums identify the pinned files; they do not establish general safety or compatibility with every game build.
 
 ## Technical references
 

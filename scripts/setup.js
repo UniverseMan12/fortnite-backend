@@ -60,7 +60,8 @@ export async function setup({ withGame = true, quiet = false } = {}) {
     let replaceServer = !fs.existsSync(serverDll);
     if (!replaceServer) {
       const current = crypto.createHash('sha256').update(fs.readFileSync(serverDll)).digest('hex');
-      replaceServer = current !== lock.dlls['reboot.dll'] && current === lock.previousGameServerSha256;
+      const previous = lock.previousGameServerSha256s ?? [lock.previousGameServerSha256];
+      replaceServer = current !== lock.dlls['reboot.dll'] && previous.includes(current);
       if (current !== lock.dlls['reboot.dll'] && !replaceServer) verifyDll('reboot.dll');
     }
     if (replaceServer) {
