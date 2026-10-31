@@ -33,7 +33,7 @@ test('local backend: login, profile, F8 hotfix, matchmaking and XMPP readiness',
   assert.equal(fs.readFileSync(path.join(temporary, 'index.js'), 'utf8'), once, 'patches are idempotent');
   const port = await unusedPort(), xmppPort = await unusedPort();
   backend = await startBackend({ directory: temporary, port, xmppPort });
-  await assert.rejects(assertFreePort(port), /belegt/);
+  await assert.rejects(assertFreePort(port), /already in use/);
   const headers = { 'user-agent': 'Fortnite/++Fortnite+Release-4.2-CL-4072250 Windows/10', 'content-type': 'application/json' };
   const request = (route, options = {}) => fetch(`${backend.url}${route}`, { headers, ...options });
   const health = await (await request('/local/health')).json();

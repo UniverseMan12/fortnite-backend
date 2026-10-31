@@ -8,7 +8,7 @@ import { ROOT } from './config.js';
 export async function assertFreePort(port) {
   await new Promise((resolve, reject) => {
     const probe = net.createServer();
-    probe.once('error', () => reject(new Error(`Port ${port} ist bereits belegt. Beende den anderen Dienst oder die zweite Backend-Instanz.`)));
+    probe.once('error', () => reject(new Error(`Port ${port} is already in use. Close the other service or the second backend instance.`)));
     probe.listen(port, '127.0.0.1', () => probe.close(resolve));
   });
 }
@@ -32,7 +32,7 @@ export async function startBackend({ port = 3551, xmppPort = 80, directory = pat
   try {
     for (let attempt = 0; attempt < 100; attempt++) {
       if (error) throw error;
-      if (child.exitCode !== null) throw new Error('Backend wurde beendet. Details: logs/backend.log');
+      if (child.exitCode !== null) throw new Error('The backend stopped. See logs/backend.log for details.');
       try {
         const response = await fetch(`http://127.0.0.1:${port}/local/health`, { signal: AbortSignal.timeout(500) });
         const status = await response.json();
@@ -40,6 +40,6 @@ export async function startBackend({ port = 3551, xmppPort = 80, directory = pat
       } catch {}
       await delay(100);
     }
-    throw new Error('Backend wurde nicht rechtzeitig bereit. Details: logs/backend.log');
+    throw new Error('The backend did not become ready in time. See logs/backend.log for details.');
   } catch (error) { await stop(); throw error; }
 }

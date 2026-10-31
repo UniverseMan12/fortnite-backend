@@ -37,7 +37,7 @@ public sealed class LocalGameSession : IDisposable
     IntPtr job;
     static Exception Error(string operation) { return new Win32Exception(Marshal.GetLastWin32Error(), operation); }
     public LocalGameSession() {
-        if (IntPtr.Size != 8) throw new InvalidOperationException("64-Bit PowerShell erforderlich.");
+        if (IntPtr.Size != 8) throw new InvalidOperationException("64-bit PowerShell is required.");
         job = CreateJobObject(IntPtr.Zero, null);
         if (job == IntPtr.Zero) throw Error("CreateJobObject");
         var limits = new ExtendedLimits(); limits.basic.flags = 0x2000; // KILL_ON_JOB_CLOSE
@@ -71,9 +71,9 @@ public sealed class LocalGameSession : IDisposable
             thread = CreateRemoteThread(process, IntPtr.Zero, UIntPtr.Zero, loader, buffer, 0, IntPtr.Zero);
             if (thread == IntPtr.Zero) throw Error("CreateRemoteThread");
             finished = WaitForSingleObject(thread, 15000) == 0;
-            if (!finished) throw new TimeoutException("DLL konnte nicht innerhalb von 15 Sekunden geladen werden: " + file);
+            if (!finished) throw new TimeoutException("DLL did not load within 15 seconds: " + file);
             uint code;
-            if (!GetExitCodeThread(thread, out code) || code == 0) throw new InvalidOperationException("DLL konnte nicht geladen werden: " + file);
+            if (!GetExitCodeThread(thread, out code) || code == 0) throw new InvalidOperationException("Could not load DLL: " + file);
         } finally {
             if (thread != IntPtr.Zero) CloseHandle(thread);
             // On timeout, the job owner terminates the process; don't free a buffer still in use.

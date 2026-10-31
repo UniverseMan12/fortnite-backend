@@ -6,16 +6,16 @@ $projectRoot = Split-Path $PSScriptRoot -Parent
 $session = $null
 $logReader = $null
 try {
-    if (-not [Environment]::Is64BitProcess) { throw 'Bitte 64-Bit PowerShell verwenden.' }
+    if (-not [Environment]::Is64BitProcess) { throw 'Please use 64-bit PowerShell.' }
     $config = Get-Content -LiteralPath (Join-Path $projectRoot 'config.local.json') -Raw | ConvertFrom-Json
     $manifest = Get-Content -LiteralPath (Join-Path $projectRoot 'dependencies.lock.json') -Raw | ConvertFrom-Json
-    if ($config.username -notmatch '^[A-Za-z0-9_-]{3,24}$') { throw 'Ungueltiger Spielername.' }
+    if ($config.username -notmatch '^[A-Za-z0-9_-]{3,24}$') { throw 'Invalid player name.' }
     $binaries = Join-Path $config.gamePath 'FortniteGame\Binaries\Win64'
     $exe = Join-Path $binaries 'FortniteClient-Win64-Shipping.exe'
     foreach ($folder in @('Engine', 'FortniteGame')) {
-        if (-not (Test-Path -LiteralPath (Join-Path $config.gamePath $folder) -PathType Container)) { throw "Ordner $folder fehlt." }
+        if (-not (Test-Path -LiteralPath (Join-Path $config.gamePath $folder) -PathType Container)) { throw "Missing folder: $folder." }
     }
-    if (-not (Test-Path -LiteralPath $exe -PathType Leaf)) { throw 'Shipping-EXE fehlt.' }
+    if (-not (Test-Path -LiteralPath $exe -PathType Leaf)) { throw 'The Shipping EXE is missing.' }
     $dllNames = @('sinum.dll','memory.dll')
     if ($Mode -eq 'server') { $dllNames += 'reboot.dll' } else { $dllNames += 'console.dll' }
     foreach ($name in $dllNames) {
@@ -23,11 +23,11 @@ try {
         $sha = [System.Security.Cryptography.SHA256]::Create()
         try { $hash = [BitConverter]::ToString($sha.ComputeHash([IO.File]::ReadAllBytes($file))).Replace('-', '') }
         finally { $sha.Dispose() }
-        if ($hash -ne $manifest.dlls.$name) { throw "Pruefsumme falsch: $name" }
+        if ($hash -ne $manifest.dlls.$name) { throw "Checksum mismatch: $name" }
     }
     $health = Invoke-RestMethod 'http://127.0.0.1:3551/local/health' -TimeoutSec 3
-    if ($health.service -ne 'fortnite-backend-local' -or -not $health.ready) { throw 'Das lokale Backend ist nicht bereit.' }
-    if ($Mode -eq 'server' -and (Get-NetUDPEndpoint -LocalPort 7777 -ErrorAction SilentlyContinue)) { throw 'UDP-Port 7777 ist bereits belegt.' }
+    if ($health.service -ne 'fortnite-backend-local' -or -not $health.ready) { throw 'The local backend is not ready.' }
+    if ($Mode -eq 'server' -and (Get-NetUDPEndpoint -LocalPort 7777 -ErrorAction SilentlyContinue)) { throw 'UDP port 7777 is already in use.' }
     Add-Type -Path (Join-Path $projectRoot 'src\NativeProcess.cs')
     $session = New-Object LocalGameSession
     # Work around legacy Unreal/OpenSSL initialization issues on newer Intel CPUs.
@@ -46,7 +46,7 @@ try {
     if ($Mode -eq 'server') { $arguments += ' -nosplash -nosound -nullrhi -port=7777 -MULTIHOME=127.0.0.1' }
     else { $arguments += ' -windowed -ResX=1280 -ResY=720' }
     $gameId = $session.Start($exe, $arguments, $false, $working)
-    Write-Output "[$Mode] Fortnite gestartet (PID $gameId). Verbinde lokales Backend ..."
+    Write-Output "[$Mode] Fortnite started (PID $gameId). Connecting to the local backend..."
     $session.LoadLibrary($gameId, (Join-Path $projectRoot 'runtime\sinum.dll'))
     $game = Get-Process -Id $gameId
     $deadline = (Get-Date).AddMinutes(4)
@@ -55,7 +55,7 @@ try {
     $carry = ''
     while ((Get-Date) -lt $deadline) {
         $game.Refresh()
-        if ($game.HasExited) { throw "Fortnite wurde vor dem Login beendet. Log: $log" }
+        if ($game.HasExited) { throw "Fortnite exited before login completed. Log: $log" }
         # Some Shipping builds ignore ABSLOG. Identify their default log by this
         # instance's unique command-line marker, never by a stale login message.
         if ($null -eq $logReader) {
@@ -69,27 +69,27 @@ try {
             if (Test-Path -LiteralPath $actualLog) {
                 $stream = [IO.File]::Open($actualLog, [IO.FileMode]::Open, [IO.FileAccess]::Read, [IO.FileShare]::ReadWrite)
                 $logReader = New-Object IO.StreamReader($stream)
-                Write-Output "[$Mode] Spiellog: $actualLog"
+                Write-Output "[$Mode] Game log: $actualLog"
             }
         }
         if ($null -ne $logReader) {
             $tail = $carry + $logReader.ReadToEnd()
             $carry = $tail.Substring([Math]::Max(0, $tail.Length - 512))
             if ($tail -match '\[UOnlineAccountCommon::ContinueLoggingIn\][^\r\n]*\(Completed\)') { $loggedIn = $true; break }
-            if ($tail -match 'Unable to login to Fortnite servers|Fatal error!|Critical error') { throw "Login oder Spielstart fehlgeschlagen. Log: $actualLog" }
+            if ($tail -match 'Unable to login to Fortnite servers|Fatal error!|Critical error') { throw "Login or game startup failed. Log: $actualLog" }
         }
         Start-Sleep -Milliseconds 400
     }
-    if (-not $loggedIn) { throw "Login nach 4 Minuten nicht bestaetigt. Log: $log" }
+    if (-not $loggedIn) { throw "Login was not confirmed within 4 minutes. Log: $actualLog" }
     if ($null -ne $logReader) { $logReader.Dispose(); $logReader = $null }
-    Write-Output "[$Mode] Lokaler Login bestaetigt."
+    Write-Output "[$Mode] Local login confirmed."
     $session.LoadLibrary($gameId, (Join-Path $projectRoot 'runtime\memory.dll'))
     if ($Mode -eq 'server') {
         $session.LoadLibrary($gameId, (Join-Path $projectRoot 'runtime\reboot.dll'))
-        Write-Output '[server] Reboot geladen. Warte im Reboot-Fenster auf Joinable: true.'
+        Write-Output '[server] Reboot loaded. Wait for Joinable: true in the Reboot window before joining.'
     } else {
         $session.LoadLibrary($gameId, (Join-Path $projectRoot 'runtime\console.dll'))
-        Write-Output '[client] Konsole geladen. F8 -> open 127.0.0.1:7777 -> Enter.'
+        Write-Output '[client] Console loaded. Once the host is ready: press F8, type open 127.0.0.1:7777, press Enter.'
     }
     $game.WaitForExit()
 } catch {

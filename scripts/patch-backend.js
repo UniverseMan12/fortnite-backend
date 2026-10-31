@@ -15,6 +15,8 @@ export function patchBackend(directory = path.join(ROOT, 'vendor', 'LawinServer'
   source = fs.readFileSync(xmpp, 'utf8');
   source = source.replace('const port = 80;', 'const port = Number(process.env.XMPP_PORT || 80);');
   source = source.replace('new WebSocket({ port: port }, () => console.log("XMPP and Matchmaker started listening on port", port))', "new WebSocket({ port: port, host: '127.0.0.1' }, () => { global.localXmppReady = true; console.log('XMPP and Matchmaker started listening on port', port); })");
-  source = source.replace('console.log("XMPP and Matchmaker \\x1b[31mFAILED\\x1b[0m to start hosting.");', "console.error('XMPP konnte nicht starten:', err.message); process.exit(1);");
+  source = source.replace('console.log("XMPP and Matchmaker \\x1b[31mFAILED\\x1b[0m to start hosting.");', "console.error('XMPP failed to start:', err.message); process.exit(1);");
+  // Translate the message left by an earlier local installation.
+  source = source.replace('XMPP konnte nicht starten:', 'XMPP failed to start:');
   fs.writeFileSync(xmpp, source);
 }
