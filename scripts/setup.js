@@ -5,6 +5,7 @@ import { spawnSync } from 'node:child_process';
 import { pathToFileURL } from 'node:url';
 import { ROOT } from '../src/config.js';
 import { patchBackend } from './patch-backend.js';
+import { downloadVerified } from './download.js';
 
 export const lock = JSON.parse(fs.readFileSync(path.join(ROOT, 'dependencies.lock.json'), 'utf8'));
 export function run(command, args, cwd = ROOT, quiet = false) {
@@ -20,11 +21,6 @@ export function verifyDll(name) {
   const digest = crypto.createHash('sha256').update(fs.readFileSync(target)).digest('hex');
   if (digest !== lock.dlls[name].toLowerCase()) throw new Error(`${name}: checksum mismatch. This file will not be loaded.`);
   return target;
-}
-async function download(url, file) {
-  const response = await fetch(url, { signal: AbortSignal.timeout(120000) });
-  if (!response.ok) throw new Error(`Download failed (${response.status}): ${url}. The build artifact may have expired; see README.md.`);
-  fs.writeFileSync(file, Buffer.from(await response.arrayBuffer()));
 }
 export async function setup({ withGame = true, quiet = false } = {}) {
   for (const name of ['vendor', 'runtime', 'logs', 'data']) fs.mkdirSync(path.join(ROOT, name), { recursive: true });
@@ -52,7 +48,7 @@ export async function setup({ withGame = true, quiet = false } = {}) {
       const file = path.join(ROOT, 'runtime', name);
       if (!fs.existsSync(file)) {
         if (!quiet) console.log(`Downloading ${name} from the pinned Reboot Launcher commit...`);
-        await download(`https://raw.githubusercontent.com/Auties00/Reboot-Launcher/${lock.launcherCommit}/gui/dependencies/dlls/${name}`, file);
+        await downloadVerified(`https://raw.githubusercontent.com/Auties00/Reboot-Launcher/${lock.launcherCommit}/gui/dependencies/dlls/${name}`, file, { sha256: lock.dlls[name] });
       }
       verifyDll(name);
     }
@@ -67,7 +63,7 @@ export async function setup({ withGame = true, quiet = false } = {}) {
     if (replaceServer) {
       if (!quiet) console.log('Downloading the pinned Reboot game server...');
       const archive = path.join(ROOT, 'runtime', 'reboot.zip');
-      await download(lock.gameServerArchive, archive);
+      await downloadVerified(lock.gameServerArchive, archive, { sha256: lock.gameServerArchiveSha256 });
       run('powershell.exe', ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', path.join(ROOT, 'scripts', 'extract-server.ps1')], ROOT, quiet);
     }
     verifyDll('reboot.dll');

@@ -47,7 +47,7 @@ namespace LocalTools {
         SpawnedLootCount.store(static_cast<int>(SpawnedLoot.size()));
         return true;
     }
-    static void RestoreHealth(AFortPlayerPawn* pawn) {
+    static void RestoreHealth(AFortPawn* pawn) {
         if (pawn->GetHealth() < 100) pawn->SetHealth(100);
         if (pawn->GetShield() < 100) pawn->SetShield(100);
         pawn->ForceNetUpdate();

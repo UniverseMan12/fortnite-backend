@@ -12,6 +12,17 @@ if ($digest -ne $manifest.dlls.'reboot.dll') { throw 'Downloaded server checksum
 $license = Join-Path $out 'REBOOT-LICENSE.txt'
 if (-not (Test-Path -LiteralPath $license)) { throw 'Server license is missing from the archive.' }
 $target = Join-Path $runtime 'reboot.dll'
-if (Test-Path -LiteralPath $target) { Copy-Item -LiteralPath $target -Destination (Join-Path $runtime 'reboot.previous.dll') }
-Copy-Item -LiteralPath $files[0].FullName -Destination (Join-Path $runtime 'reboot.dll')
-Copy-Item -LiteralPath $license -Destination (Join-Path $runtime 'REBOOT-LICENSE.txt')
+$staged = Join-Path $runtime ('reboot-' + [Guid]::NewGuid().ToString('N') + '.tmp')
+try {
+    Copy-Item -LiteralPath $files[0].FullName -Destination $staged
+    Copy-Item -LiteralPath $license -Destination (Join-Path $runtime 'REBOOT-LICENSE.txt')
+    if (Test-Path -LiteralPath $target) {
+        [IO.File]::Replace($staged, $target, (Join-Path $runtime 'reboot.previous.dll'))
+    } else {
+        [IO.File]::Move($staged, $target)
+    }
+} catch {
+    throw "Server update failed. Close the running Fortnite session and try again. $($_.Exception.Message)"
+} finally {
+    if (Test-Path -LiteralPath $staged) { Remove-Item -LiteralPath $staged -Force }
+}

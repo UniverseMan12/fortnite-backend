@@ -7,6 +7,7 @@
   "gameServerCommit": "10c659028ad9d6816f78226483f11a884bf81f57",
   "gameServerBuildCommit": "58ac04970e0afcdc9669a6c28955aed6b1a60e76",
   "gameServerArchive": "https://nightly.link/UniverseMan12/fortnite-backend/actions/artifacts/13044540768.zip",
+  "gameServerArchiveSha256": "1fc9b4c3322929cefda44e53878dc036789c4492952bb1e14ea267a2a942b0d9",
   "previousGameServerSha256s": [
     "e292d83c61166e356fdd7888740b1e3f4e4ea2e4a6e06160411f61276802dc12",
     "3630a20e719b86238074467979c18dd48f172da3e4bb95a1b5aea6223d8cbf36"

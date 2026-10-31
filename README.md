@@ -29,33 +29,46 @@ Selecting either subfolder also works: the launcher finds the common parent auto
 
 ## Local tools
 
-After the server starts, open **Local tools** at the top of the Reboot window. Join your match before using the buttons.
+After the server starts, open **Local tools** at the top of the Reboot window. Join your match before using the buttons. Controls are grouped into **Player**, **Items** and **Building & ammo** tabs. The connection indicator shows whether your player is available.
 
 | Control | Effect |
 | --- | --- |
-| Respawn me | Creates a new pawn near your previous position with full health and shield. |
-| Heal + shield | Restores 100 health and shield while alive. |
+| Respawn me | Creates a new pawn at your saved spot, or near your previous position, with full health and shield. |
+| Heal + shield | Restores health and shield to at least 100 while alive, without reducing higher values. |
+| Auto-heal | Restores health and shield every half second; does not prevent instant death. |
+| Save my spot / Return to spot | Saves one position for this session, then teleports back when the location is clear. Also sets your respawn point. |
+| Clear spot | Returns respawning to your previous position. |
+| Infinity Gauntlet | Spawns the 4.2 Carmine gadget for you to pick up. Requires Enable AGIDs; transformation remains experimental. |
+| Item selection | Choose from ten items, including SCAR, pump shotgun, sniper, rocket launcher, shields, medkits and bandages. Consumable stack sizes are bounded. |
 | Spawn chest loot | Drops a random chest's loot in front of you. |
 | Give starter kit | Adds an assault rifle, shotgun, ammunition and materials. |
 | Refill materials / ammo | Replenishes supplies once. |
 | Clear player builds | Removes player-built structures; keeps map buildings. |
+| Clear spawned loot | Removes only pickups created by these local tools; keeps map loot and items already collected. |
 | Infinite ammo / materials | Replenishes supplies every half second, including the equipped weapon's magazine. |
 
 **Practice respawn** is enabled by default. It keeps your inventory and prevents your local death from ending the round, so you can click **Respawn me** after dying. Turn it off for normal elimination behavior. It cannot reopen a match that has already ended. Respawning as Thanos or preserving special transformations is not guaranteed.
 
-These controls target your loopback-connected player. If more than one local client joins, use F8 to target yourself:
+These controls require exactly one loopback-connected player. Spawned pickups are limited to 100 outstanding items, and actions are rate-limited to avoid accidental click spam. Saved positions reset when you leave. You can also press F8 and enter:
 
 ```text
 cheat local respawn
 cheat local heal
 cheat local loot
 cheat local kit
+cheat local gauntlet
+cheat local save
+cheat local return
+cheat local forget
+cheat local clearloot
+cheat local status
 cheat local materials
 cheat local ammo
 cheat local clearbuilds
 cheat local infiniteammo on
 cheat local infinitematerials on
 cheat local practice on
+cheat local autoheal on
 ```
 
 Use `off` instead of `on` to disable a toggle. The message under the buttons reports the result or explains why an action is unavailable. These are local practice tools; they do not add support for other game versions.
@@ -66,7 +79,7 @@ Validation: the customized server builds successfully, starts on 4.2 and display
 
 Windows x64, [Node.js 22 or newer](https://nodejs.org/), [Git](https://git-scm.com/downloads/win) for first-time setup, and your own complete Fortnite 4.2 installation. No game files are included.
 
-First-time setup needs internet and may take a few minutes. Pinned components are downloaded automatically and DLL hashes are checked. Later starts reuse them. The host and client run as two game processes, so allow enough RAM for both. Local matches do not automatically contain other players or bots.
+First-time setup needs internet and may take a few minutes. Pinned components are downloaded automatically, with size limits, checksum verification and retries for temporary network failures. Interrupted or invalid downloads keep existing files intact. Server replacement is atomic and saves the previous DLL as runtime/reboot.previous.dll. Later starts reuse installed components. The host and client run as two game processes, so allow enough RAM for both. Local matches do not automatically contain other players or bots.
 
 ## Troubleshooting
 
@@ -77,6 +90,9 @@ First-time setup needs internet and may take a few minutes. Pinned components ar
 | Node.js is missing | Install Node.js 22 or newer and reopen START.cmd. |
 | Port 80, 3551 or 7777 is occupied | Close your other backend or host instance. Unrelated services are not stopped automatically. |
 | Setup fails | Read logs/setup.log and the error shown in the launcher. |
+| Server update fails | Close the running Fortnite session, then reopen START.cmd. |
+| Item or Gauntlet does not spawn | Read the message under Local tools. For the Gauntlet, keep Enable AGIDs checked. |
+| Respawn cannot continue an ended match | Start a fresh round with Practice respawn enabled before dying. |
 | Server does not start | Read logs/server-helper.log. The client will not open if host startup fails. |
 | Fortnite does not open | Read logs/client-helper.log and logs/backend.log. |
 | Play returns to the lobby | Check the Reboot window for Joinable: true and check the helper logs for a host failure. |
@@ -101,6 +117,8 @@ npm test                   # Validation, startup coordination and backend tests
 Settings are stored in config.local.json. The player name defaults to Player; an existing valid name is preserved. Build identification uses embedded release strings rather than a manually entered version.
 
 The coordinator waits for backend HTTP/XMPP readiness, the user's Start server action, and then UDP port 7777 owned by its host process. Private per-session marker files connect the Reboot settings UI to the launcher. There is no timeout while choosing a playlist; login and server startup still have time limits. It closes its processes on startup failure, client exit or Ctrl+C. Automated orchestration tests cover readiness, failure and cancellation.
+
+GitHub Actions runs launcher and backend tests on Windows for code changes. Download tests cover interrupted transfers, HTTP errors, checksum mismatches, size limits and cancellation. Installer tests verify that invalid archives preserve the old DLL and successful replacement creates its backup.
 
 HTTP backend: http://127.0.0.1:3551. XMPP/matchmaker: 127.0.0.1:80. Game target: 127.0.0.1:7777 over UDP. HTTP and XMPP bind to loopback. In the 4.2 test, Reboot listened on 0.0.0.0:7777 despite -MULTIHOME=127.0.0.1, so the host's network binding is not restricted to loopback. No firewall rules, hosts-file entries or system certificates are changed.
 

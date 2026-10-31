@@ -1,0 +1,37 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import crypto from 'node:crypto';
+import { spawnSync } from 'node:child_process';
+
+test('server install preserves old DLL on invalid artifacts and backs it up on replacement', { skip: process.platform !== 'win32' }, t => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'fortnite-install-'));
+  t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+  const runtime = path.join(root, 'runtime'), pack = path.join(root, 'package'), scripts = path.join(root, 'scripts');
+  for (const dir of [runtime, pack, scripts]) fs.mkdirSync(dir);
+  fs.copyFileSync(new URL('../scripts/extract-server.ps1', import.meta.url), path.join(scripts, 'extract-server.ps1'));
+  fs.writeFileSync(path.join(pack, 'reboot.dll'), 'new verified DLL');
+  fs.writeFileSync(path.join(runtime, 'reboot.dll'), 'old working DLL');
+  const sha = crypto.createHash('sha256').update('new verified DLL').digest('hex');
+  const archiveScript = path.join(root, 'archive.ps1');
+  fs.writeFileSync(archiveScript, "Compress-Archive -Path (Join-Path $PSScriptRoot 'package/*') -DestinationPath (Join-Path $PSScriptRoot 'runtime/reboot.zip') -Force");
+  const run = file => spawnSync('powershell.exe', ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', file], { encoding: 'utf8', windowsHide: true });
+  const install = () => run(path.join(scripts, 'extract-server.ps1'));
+  const manifest = hash => fs.writeFileSync(path.join(root, 'dependencies.lock.json'), JSON.stringify({ dlls: { 'reboot.dll': hash } }));
+  assert.equal(run(archiveScript).status, 0);
+  manifest(sha);
+  assert.notEqual(install().status, 0, 'missing license must fail');
+  assert.equal(fs.readFileSync(path.join(runtime, 'reboot.dll'), 'utf8'), 'old working DLL');
+  fs.writeFileSync(path.join(pack, 'REBOOT-LICENSE.txt'), 'test license');
+  assert.equal(run(archiveScript).status, 0);
+  manifest('0'.repeat(64));
+  assert.notEqual(install().status, 0, 'checksum mismatch must fail');
+  assert.equal(fs.readFileSync(path.join(runtime, 'reboot.dll'), 'utf8'), 'old working DLL');
+  manifest(sha);
+  const result = install(); assert.equal(result.status, 0, result.stderr);
+  assert.equal(fs.readFileSync(path.join(runtime, 'reboot.dll'), 'utf8'), 'new verified DLL');
+  assert.equal(fs.readFileSync(path.join(runtime, 'reboot.previous.dll'), 'utf8'), 'old working DLL');
+  assert.equal(fs.readdirSync(runtime).filter(name => name.endsWith('.tmp')).length, 0);
+});
