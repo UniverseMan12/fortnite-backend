@@ -47,6 +47,25 @@ export function patchReboot(root) {
     '    while (SecondsUntilTravel > 0)\n    {\n        SecondsUntilTravel -= 1;\n\n        Sleep(1000);\n    }',
     '    while (!LauncherStartRequested.load()) Sleep(100);'));
   patchLocalTools(root);
+  // Multiplayer defaults are applied once before the user configures the server.
+  const multiplayerUpdate = (file, before, after) => {
+    const target = path.join(dir, file);
+    const source = fs.readFileSync(target, 'utf8').replace(/\r\n/g, '\n');
+    if (source.includes(after)) return;
+    fs.writeFileSync(target, replace(source, before, after));
+  };
+  // Run before creating the settings window, so the editable player count is visible.
+  multiplayerUpdate('gui.h', '\t::ShowWindow(hwnd, SW_SHOWDEFAULT);',
+    '\tchar multiplayerMode[2] = {};\n' +
+    '\tif (GetEnvironmentVariableA("FORTNITE_LAUNCHER_MULTIPLAYER", multiplayerMode, sizeof(multiplayerMode)) == 1 && multiplayerMode[0] == \'1\') {\n' +
+    '\t\tWarmupRequiredPlayerCount = 2;\n' +
+    '\t\tLocalTools::PracticeRespawn.store(false);\n' +
+    '\t}\n' +
+    '\t::ShowWindow(hwnd, SW_SHOWDEFAULT);');
+  multiplayerUpdate('globals.h', 'bPrivateIPsAreOperator = true;', 'bPrivateIPsAreOperator = false;');
+  multiplayerUpdate('commands.h',
+    'IPStr == "127.0.0.1" || IPStr == "68.134.74.228" || IPStr == "26.66.97.190" || IsOp(PlayerController)',
+    'IPStr == "127.0.0.1" || IPStr.rfind("127.0.0.1:", 0) == 0 || IsOp(PlayerController)');
 }
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   if (!process.argv[2]) throw new Error('Pass the pinned Reboot source directory.');
