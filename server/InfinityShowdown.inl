@@ -127,6 +127,25 @@ namespace InfinityShowdown {
         const int offset = object->GetOffset(name, false); if (offset < 0) return false;
         object->Get<T>(offset) = value; return true;
     }
+    void ConfigurePlaylist(UObject* playlist) {
+        // Clients load HUD extensions from their local playlist asset. Mutating
+        // Solo's UIExtensions only on the host cannot give clients the Carmine HUD.
+        // Replicate the real Carmine asset, retaining Solo gameplay on the server.
+        auto solo = LoadObject<UObject>(L"/Game/Athena/Playlists/Playlist_DefaultSolo.Playlist_DefaultSolo");
+        if (!playlist || !solo || playlist == solo) { Report("Infinity Showdown: Carmine HUD playlist is unavailable."); return; }
+        for (auto name : {"GameData", "LootTierData", "LootPackages", "ResourceRates", "RangedWeapons"}) {
+            const int target = playlist->GetOffset(name,false), source = solo->GetOffset(name,false);
+            if (target >= 0 && source >= 0) playlist->Get<TSoftObjectPtr<UObject>>(target) = solo->Get<TSoftObjectPtr<UObject>>(source);
+        }
+        const int mission = solo->GetOffset("PlaylistMissionGen", false);
+        if (mission >= 0) Put(playlist, "PlaylistMissionGen", solo->Get<UObject*>(mission));
+        Put(playlist, "MaxSquadSize", 1); Put(playlist, "bUseDefaultSupplyDrops", false);
+        for (auto name : {"SupplyDropInfoList", "SupplyDropModifierList"}) {
+            const int offset = playlist->GetOffset(name,false);
+            if (offset >= 0) playlist->Get<TArray<uint8_t>>(offset).ArrayNum = 0;
+        }
+        LOG_INFO(LogDev, "Infinity Showdown: Carmine HUD enabled; automatic supply drops disabled.");
+    }
     bool BeginZone(AFortGameModeAthena* mode) {
         if (ZoneWorld.Get() != GetWorld()) { ZoneWorld = Ref(GetWorld()); ZoneStarted = false; HeldZone = {}; }
         if (ZoneStarted) return false;
@@ -217,13 +236,6 @@ namespace InfinityShowdown {
         auto fn = movement->FindFunction("IsMovingOnGround"); if (!fn) return false;
         bool result = false; movement->ProcessEvent(fn, &result); return result;
     }
-    static void SetThanosMarker(AFortPlayerPawn* pawn, UFortItemDefinition* gadget, float now) {
-        if (!pawn) return;
-        FName id;
-        if (gadget) { const int offset = gadget->GetOffset("InventorySpecialActorUniqueID",false); if (offset >= 0) id = gadget->Get<FName>(offset); }
-        Put(pawn,"ItemSpecialActorID",id); Put(pawn,"ItemSpecialActorCategoryID",id);
-        Put(pawn,"BecameSpecialActorTime",gadget ? now : 0.f); pawn->ForceNetUpdate();
-    }
     static bool GroundAt(FVector& location) {
         auto fn = FindObject<UFunction>(L"/Script/Engine.KismetSystemLibrary.LineTraceSingle");
         auto library = FindObject<UObject>(L"/Script/Engine.Default__KismetSystemLibrary");
@@ -281,7 +293,6 @@ namespace InfinityShowdown {
         auto result = player.lives.Die((uint64_t(uint32_t(life.serial)) << 32) | uint32_t(life.index));
         if (result == InfinityRules::Lives::Duplicate) return true;
         player.location = pawn->GetActorLocation();
-        SetThanosMarker(pawn, nullptr, 0);
         if (Thanos == found->first) { PreviousThanos = Thanos; Thanos.clear(); player.restore = true; }
         if (result == InfinityRules::Lives::Eliminate) {
             // Remove the gadget before native final elimination; inventory dropping is disabled for this mode.
@@ -364,7 +375,7 @@ namespace InfinityShowdown {
                 : "Infinity Showdown: transformation and equipment restore failed. Stop this session; see the server log."); return;
         }
         player.transformed = true; Thanos = selected;
-        SetThanosMarker(controller->GetMyFortPawn(), gauntlet, float(now));
+        controller->GetMyFortPawn()->ForceNetUpdate();
         Broadcast("Infinity Showdown: " + selected + " is Thanos! Each player has up to 10 respawns.");
     }
 }

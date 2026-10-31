@@ -33,6 +33,8 @@ export function patchInfinity(root) {
   ]);
   edit('FortGameModeAthena.cpp', [
     ['#include "FortGameModeAthena.h"', '#include "FortGameModeAthena.h"\n#include "InfinityShowdown.h"'],
+    ['auto SetPlaylist = [&GameState, &GameMode](UObject* Playlist, bool bOnRep) -> void {',
+     'auto SetPlaylist = [&GameState, &GameMode](UObject* Playlist, bool bOnRep) -> void {\n\t\tif (InfinityShowdown::Enabled.load()) InfinityShowdown::ConfigurePlaylist(Playlist);'],
     ['OnAircraftEnteredDropZoneOriginal(GameModeAthena, Aircraft);\n\n\tif (Globals::bLateGame.load())',
      'OnAircraftEnteredDropZoneOriginal(GameModeAthena, Aircraft);\n\n\tif (Globals::bLateGame.load() && !InfinityShowdown::Enabled.load())']
   ]);
@@ -44,11 +46,11 @@ export function patchInfinity(root) {
   edit('gui.h', [
     ['#include "LocalTools.h"','#include "LocalTools.h"\n#include "InfinityShowdown.h"'],
     ['\tchar multiplayerMode[2] = {};',
-     '\tchar showdown[2] = {};\n\tif (GetEnvironmentVariableA("FORTNITE_LAUNCHER_SHOWDOWN", showdown, sizeof(showdown)) == 1 && showdown[0] == \'1\') {\n\t\tInfinityShowdown::Enabled.store(true);\n\t\tSetIsLategame(true); Globals::bEnableAGIDs = true;\n\t\tPlaylistName = "/Game/Athena/Playlists/Playlist_DefaultSolo.Playlist_DefaultSolo";\n\t\tLocalTools::PracticeRespawn.store(false);\n\t}\n\tchar multiplayerMode[2] = {};'],
+     '\tchar showdown[2] = {};\n\tif (GetEnvironmentVariableA("FORTNITE_LAUNCHER_SHOWDOWN", showdown, sizeof(showdown)) == 1 && showdown[0] == \'1\') {\n\t\tInfinityShowdown::Enabled.store(true);\n\t\tSetIsLategame(true); Globals::bEnableAGIDs = true;\n\t\tPlaylistName = "/Game/Athena/Playlists/Carmine/Playlist_Carmine.Playlist_Carmine";\n\t\tLocalTools::PracticeRespawn.store(false);\n\t}\n\tchar multiplayerMode[2] = {};'],
     // Existing late-game kit mutates inventory from its GUI thread. Our kit runs only on the game thread.
     ['for (int z = 0; z < ClientConnections.Num(); z++)','for (int z = 0; !InfinityShowdown::Enabled.load() && z < ClientConnections.Num(); z++)'],
     ['CreateThread(0, 0, LateGameThread, 0, 0, 0);', 'if (InfinityShowdown::Enabled.load()) InfinityShowdown::BusRequested.store(true);\n\t\t\t\t\t\t\t\telse CreateThread(0, 0, LateGameThread, 0, 0, 0);'],
     ['\t\tif (ImGui::Button("Start server")) {',
-     '\t\tif (InfinityShowdown::Enabled.load()) { ImGui::TextUnformatted("Infinity Showdown: random Thanos, 10 respawns, retained loot."); }\n\t\tif (ImGui::Button("Start server")) {\n\t\t\tif (InfinityShowdown::Enabled.load()) { SetIsLategame(true); Globals::bEnableAGIDs = true; PlaylistName = "/Game/Athena/Playlists/Playlist_DefaultSolo.Playlist_DefaultSolo"; }']
+     '\t\tif (InfinityShowdown::Enabled.load()) { ImGui::TextUnformatted("Infinity Showdown: random Thanos, 10 respawns, retained loot."); }\n\t\tif (ImGui::Button("Start server")) {\n\t\t\tif (InfinityShowdown::Enabled.load()) { SetIsLategame(true); Globals::bEnableAGIDs = true; PlaylistName = "/Game/Athena/Playlists/Carmine/Playlist_Carmine.Playlist_Carmine"; }']
   ]);
 }

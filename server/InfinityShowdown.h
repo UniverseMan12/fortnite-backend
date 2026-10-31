@@ -6,6 +6,7 @@ class AFortPlayerController;
 class UFortItemDefinition;
 class UNetDriver;
 class AFortGameModeAthena;
+class UObject;
 namespace InfinityShowdown {
     inline std::atomic<bool> Enabled(false);
     inline std::atomic<bool> BusRequested(false);
@@ -18,4 +19,5 @@ namespace InfinityShowdown {
     void GadgetApplied(AFortPlayerController* controller, UFortItemDefinition* definition, bool success);
     bool BeginZone(AFortGameModeAthena* mode);
     void HoldZone(AFortGameModeAthena* mode);
+    void ConfigurePlaylist(UObject* playlist);
 }

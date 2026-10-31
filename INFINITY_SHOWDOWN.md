@@ -5,7 +5,7 @@ A private Fortnite 4.2 late-game mode with a randomly assigned Thanos role. This
 ## Play
 
 1. The host selects **Infinity Showdown** in the launcher, chooses their Fortnite folder and launches.
-2. In Reboot, click **Start server**. The mode uses Solo teams, enables gadget support and late-game rules automatically.
+2. In Reboot, click **Start server**. The mode uses the Carmine playlist for Thanos' ability HUD, with Solo gameplay rules, automatic supply drops disabled, gadget support and custom late-game rules.
 3. Friends choose **Join** and enter the host's VPN/LAN IP. The host controls the rules.
 4. Everyone presses Play to enter the island. Once everyone is connected, the host clicks **Start Bus** in Reboot.
 5. The bus flies across the arena with a 16-second jump window. Land first: you become eligible for random Thanos selection **20 seconds after touching the ground**. Selection only transforms a currently grounded player. No gauntlet drops from the sky.
