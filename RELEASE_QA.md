@@ -1,9 +1,9 @@
-# Desktop release checks — 0.2.0
+# Desktop release checks — 0.3.0
 
 ## What is included
 
-- `Fortnite-Launcher-0.2.0-x64-nsis.exe`: per-user Windows installer, with selectable install location.
-- `Fortnite-Launcher-0.2.0-x64-portable.exe`: portable launcher; persistent data still lives in the user's AppData.
+- `Fortnite-Launcher-0.3.0-x64-nsis.exe`: per-user Windows installer, with selectable install location.
+- `Fortnite-Launcher-0.3.0-x64-portable.exe`: portable launcher; persistent data still lives in the user's AppData.
 - `SHA256SUMS.txt`: release asset checksums.
 - `RELEASE-NOTES.md`: short usage and compatibility notes.
 
@@ -12,10 +12,10 @@ The installer does not contain Fortnite game files, personal configuration, loca
 ## Validation performed
 
 - 27 Node tests: game-folder/build detection; backend login/profile/XMPP; local and VPN matchmaking targets; cancellation and process cleanup; download integrity/retries; atomic server replacement; payload integrity/path traversal; first-player warmup regression.
-- 5 desktop UI tests: navigation and mode selection, invalid paths/retry, isolated renderer, bounded external links, overlapping start rejection, immediate cancellation and minimum-window layout.
+- 6 desktop UI tests: navigation and mode selection, invalid paths/retry, isolated renderer, bounded external links, overlapping start rejection, immediate cancellation, artwork loading, reduced motion, current-page accessibility and all three pages at 940×700, 1200×820 and 1440×960. The hero description and launch button are checked for overlap.
 - Packaged EXE with a fresh user-data directory: payload extraction, build detection, first-use component download, rejection of a public host IP, no renderer script errors.
-- Packaged EXE with the local Fortnite 4.2 installation: starts the real backend and game-server helper, reaches Reboot playlist settings, then stops the session through the launcher.
-- Portable EXE: self-extraction, initial UI, verified payload bootstrap, invalid-folder recovery and closing the application.
+- Previous 0.2.0 packaged EXE with the local Fortnite 4.2 installation: starts the real backend and game-server helper, reaches Reboot playlist settings, then stops the session through the launcher. The 0.3.0 redesign preserves that session coordinator; this real-game check was not repeated for the visual update.
+- Portable EXE: self-extraction, initial UI, bundled artwork decoding, verified payload bootstrap, invalid-folder recovery and closing the application.
 - The owner previously confirmed successful 4.2 island entry after the multiplayer warmup fix.
 
 Tests cover the stated scenarios, not every possible bug. A full two-PC Hamachi match through this GUI and installation/uninstallation on a clean Windows VM have not been verified. Server-side practice tools and Thanos retain their existing compatibility limits.

@@ -1,6 +1,6 @@
 const $ = id => document.getElementById(id);
 let mode = 'solo', busy = false;
-const titles = { play: 'Your next drop starts here.', setup: 'Make it yours.', activity: 'Behind every good drop.' };
+const titles = { play: 'Back to the island.', setup: 'Make it yours.', activity: 'Behind every good drop.' };
 const notes = {
   solo: 'Choose a playlist in Reboot, then click Start server. Press Play in Fortnite.',
   host: 'Friends use your VPN IP to join. When everyone is on the island, click Start Bus Countdown in Reboot.',
@@ -8,18 +8,24 @@ const notes = {
 };
 function showPage(name) {
   document.querySelectorAll('.page').forEach(el => { el.hidden = el.id !== 'page-' + name; });
-  document.querySelectorAll('.nav').forEach(el => el.classList.toggle('active', el.dataset.page === name));
+  document.querySelectorAll('.nav').forEach(el => {
+    el.classList.toggle('active', el.dataset.page === name);
+    if (el.dataset.page === name) el.setAttribute('aria-current', 'page'); else el.removeAttribute('aria-current');
+  });
   $('page-title').textContent = titles[name];
+  document.querySelector('main').scrollTop = 0;
 }
 function selectMode(value) {
   mode = value;
   document.querySelectorAll('.mode').forEach(el => { const selected = el.dataset.mode === mode; el.classList.toggle('selected', selected); el.setAttribute('aria-pressed', selected); });
   $('join-row').hidden = mode !== 'join'; $('mode-note').textContent = notes[mode];
+  $('hero-mode').textContent = { solo: 'SOLO SESSION', host: 'HOST A SESSION', join: 'JOIN YOUR SQUAD' }[mode];
 }
 function updateFolder() {
   const value = $('game-path').value.trim();
   $('install-title').textContent = value ? 'Fortnite installation selected' : 'Connect your game';
   $('install-subtitle').textContent = value ? 'FortniteGame + Engine · verified when you launch' : 'Choose the folder containing FortniteGame and Engine.';
+  $('edit-folder').textContent = value ? 'Change folder ↗' : 'Choose folder ↗';
 }
 function showError(error) { $('error-banner').textContent = error.message || String(error); $('error-banner').hidden = false; }
 async function safely(action) { try { return await action(); } catch (error) { showError(error); } }
@@ -28,6 +34,8 @@ function render(state) {
   for (const el of document.querySelectorAll('.mode, #game-path, #host-address, #browse, #check, #prepare, #launch')) el.disabled = busy;
   $('launch').hidden = busy; $('stop').hidden = !busy; $('stop').disabled = state.phase === 'stopping';
   $('top-status').textContent = busy ? 'SESSION ACTIVE' : state.phase === 'error' ? 'NEEDS ATTENTION' : 'STANDBY';
+  document.querySelector('.status-pill').classList.toggle('error', state.phase === 'error');
+  document.querySelector('.status-pill').classList.toggle('working', busy && state.phase !== 'error');
   $('status-heading').textContent = busy ? 'SESSION IN PROGRESS' : state.phase === 'error' ? 'LET’S GET THIS SORTED' : state.phase === 'complete' ? 'CHECKS COMPLETE' : 'ALL SYSTEMS STANDING BY';
   $('status-message').textContent = state.message;
   document.querySelector('.session-status').classList.toggle('working', busy);
@@ -71,6 +79,7 @@ $('close').onclick = () => safely(() => window.launcher.close());
 window.launcher.subscribe(render);
 safely(async () => {
   const initial = await window.launcher.initial();
+  showPage('play');
   $('app-version').textContent = initial.version;
   $('game-path').value = initial.settings.gamePath || '';
   $('host-address').value = initial.settings.host || '';
