@@ -1,0 +1,77 @@
+name: Publish launcher 0.2.0
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - '.github/workflows/publish-launcher.yml'
+permissions:
+  actions: read
+  contents: write
+concurrency:
+  group: publish-launcher-v0.2.0
+  cancel-in-progress: false
+jobs:
+  publish:
+    runs-on: windows-2022
+    timeout-minutes: 25
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: UniverseMan12/fortnite-backend
+      SOURCE_COMMIT: 41e643e8e32d89dbe84e6555b26116c8ecc4469e
+      BUILD_RUN: '41216943207'
+      RELEASE_TAG: v0.2.0
+    steps:
+      - name: Require the tested build to succeed
+        shell: pwsh
+        run: |
+          gh run watch $env:BUILD_RUN --exit-status --interval 15
+          if ($LASTEXITCODE -ne 0) { throw 'The launcher build did not pass.' }
+          $run = gh api "repos/$env:GH_REPO/actions/runs/$env:BUILD_RUN" | ConvertFrom-Json
+          if ($run.head_sha -ne $env:SOURCE_COMMIT -or $run.conclusion -ne 'success') { throw 'Unexpected source build.' }
+      - uses: actions/download-artifact@v4
+        with:
+          name: Fortnite-Launcher-0.2.0-Windows-x64
+          path: release
+          github-token: ${{ github.token }}
+          run-id: 41216943207
+      - name: Verify release files
+        shell: pwsh
+        run: |
+          $expected = @('Fortnite-Launcher-0.2.0-x64-nsis.exe','Fortnite-Launcher-0.2.0-x64-portable.exe')
+          $verified = @()
+          foreach ($line in Get-Content release/SHA256SUMS.txt) {
+            if ($line -notmatch '^([a-f0-9]{64})  (Fortnite-Launcher-0\.2\.0-x64-(?:nsis|portable)\.exe)$') { throw 'Invalid checksum entry.' }
+            $hash = $Matches[1]; $name = $Matches[2]
+            if ((Get-FileHash -LiteralPath (Join-Path release $name) -Algorithm SHA256).Hash.ToLower() -ne $hash) { throw "Checksum mismatch: $name" }
+            $verified += $name
+          }
+          if (@(Compare-Object $expected ($verified | Sort-Object -Unique)).Count -ne 0 -or $verified.Count -ne 2) { throw 'Missing release executables.' }
+          if (-not (Test-Path release/RELEASE-NOTES.md)) { throw 'Missing release notes.' }
+      - name: Upload and publish
+        shell: pwsh
+        run: |
+          $existing = gh release view $env:RELEASE_TAG --json isDraft,url 2>$null
+          if ($LASTEXITCODE -eq 0) {
+            $release = $existing | ConvertFrom-Json
+            if (-not $release.isDraft) { throw 'This version is already public; refusing to replace its assets.' }
+          } else {
+            gh release create $env:RELEASE_TAG --target $env:SOURCE_COMMIT --title 'Fortnite Launcher 0.2.0' --notes-file release/RELEASE-NOTES.md --draft
+            if ($LASTEXITCODE -ne 0) { throw 'Could not create release draft.' }
+          }
+          $assets = @(
+            'release/Fortnite-Launcher-0.2.0-x64-nsis.exe',
+            'release/Fortnite-Launcher-0.2.0-x64-portable.exe',
+            'release/SHA256SUMS.txt',
+            'release/RELEASE-NOTES.md',
+            'release/launcher-preview.png'
+          )
+          gh release upload $env:RELEASE_TAG @assets --clobber
+          if ($LASTEXITCODE -ne 0) { throw 'Asset upload failed; release remains a draft.' }
+          $uploaded = gh release view $env:RELEASE_TAG --json assets | ConvertFrom-Json
+          foreach ($file in $assets) {
+            $local = Get-Item -LiteralPath $file
+            $remote = @($uploaded.assets | Where-Object name -eq $local.Name)
+            if ($remote.Count -ne 1 -or $remote[0].size -ne $local.Length) { throw "Incomplete uploaded asset: $file" }
+          }
+          gh release edit $env:RELEASE_TAG --draft=false --latest
+          if ($LASTEXITCODE -ne 0) { throw 'Could not publish the verified release.' }
