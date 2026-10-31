@@ -52,10 +52,12 @@ Use the same **Fortnite 4.2 CL-4072250** build and the latest launcher on every 
 
 1. Install **[Hamachi](https://vpn.net/)** on each PC. The host creates a private network; friends join it with its network ID and password. Keep Hamachi connected. On the same LAN, skip this step.
 2. **Host:** open **HOST.cmd** and enter the game folder.
-3. In Reboot, choose the playlist. **Players required to start the match** defaults to **2**; increase it to your group's size before clicking **Start server**.
+3. In Reboot, choose the playlist and click **Start server**. Players can load onto the island immediately, even when only the host has joined.
 4. Wait for **Server listening** and **Joinable: true** in Reboot. Give friends your Hamachi **IPv4** address, also listed next to the Hamachi adapter in the launcher.
 5. **Friends:** open **JOIN.cmd**, enter their own game folder, then the host's VPN IPv4 address. No port or `http://` prefix is needed. Guests do not start another game server.
 6. Everyone presses **Play** in their lobby. Keep the launchers and VPN open. The host must stay connected for the match to continue.
+
+Wait for your friends on the island, then click **Start Bus Countdown** in Reboot to begin the round. The old minimum-player setting was removed: in Fortnite 4.2 it could block creation of the first player's character and leave them behind the loading screen.
 
 Each installation gets a persistent, distinct player name automatically. Download a fresh launcher ZIP for friends; do not copy your config.local.json to their PC. If it was copied, remove just the `multiplayerName` field from their config.local.json before restarting to generate a new identity.
 

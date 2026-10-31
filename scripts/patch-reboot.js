@@ -3,6 +3,13 @@ import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { patchLocalTools } from './patch-local-tools.js';
 
+export function fixWarmupAdmission(source) {
+  // In 4.2 this gates initial pawn creation, not just the bus countdown.
+  source = source.replace('WarmupRequiredPlayerCount = 2;', 'WarmupRequiredPlayerCount = 1;');
+  return source.replaceAll('ImGui::SliderInt("Players required to start the match", &WarmupRequiredPlayerCount, 1, 100);',
+    'ImGui::TextUnformatted("Players load in immediately. Start Bus Countdown when everyone is ready.");');
+}
+
 export function patchReboot(root) {
   const dir = path.join(root, 'Project Reboot 3.0');
   const update = (file, transform) => {
@@ -55,13 +62,16 @@ export function patchReboot(root) {
     fs.writeFileSync(target, replace(source, before, after));
   };
   // Run before creating the settings window, so the editable player count is visible.
-  multiplayerUpdate('gui.h', '\t::ShowWindow(hwnd, SW_SHOWDEFAULT);',
+  const guiPath = path.join(dir, 'gui.h');
+  // The environment block was already installed by the previous launcher build.
+  if (!fs.readFileSync(guiPath, 'utf8').includes('char multiplayerMode[2]')) multiplayerUpdate('gui.h', '\t::ShowWindow(hwnd, SW_SHOWDEFAULT);',
     '\tchar multiplayerMode[2] = {};\n' +
     '\tif (GetEnvironmentVariableA("FORTNITE_LAUNCHER_MULTIPLAYER", multiplayerMode, sizeof(multiplayerMode)) == 1 && multiplayerMode[0] == \'1\') {\n' +
-    '\t\tWarmupRequiredPlayerCount = 2;\n' +
+    '\t\tWarmupRequiredPlayerCount = 1;\n' +
     '\t\tLocalTools::PracticeRespawn.store(false);\n' +
     '\t}\n' +
     '\t::ShowWindow(hwnd, SW_SHOWDEFAULT);');
+  fs.writeFileSync(guiPath, fixWarmupAdmission(fs.readFileSync(guiPath, 'utf8')));
   multiplayerUpdate('globals.h', 'bPrivateIPsAreOperator = true;', 'bPrivateIPsAreOperator = false;');
   multiplayerUpdate('commands.h',
     'IPStr == "127.0.0.1" || IPStr == "68.134.74.228" || IPStr == "26.66.97.190" || IsOp(PlayerController)',
