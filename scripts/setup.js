@@ -7,9 +7,12 @@ import { ROOT } from '../src/config.js';
 import { patchBackend } from './patch-backend.js';
 
 export const lock = JSON.parse(fs.readFileSync(path.join(ROOT, 'dependencies.lock.json'), 'utf8'));
-export function run(command, args, cwd = ROOT) {
-  const result = spawnSync(command, args, { cwd, stdio: 'inherit', windowsHide: true });
-  if (result.error || result.status !== 0) throw new Error(`${command} failed: ${result.error?.message || result.status}`);
+export function run(command, args, cwd = ROOT, quiet = false) {
+  const log = quiet ? fs.openSync(path.join(ROOT, 'logs', 'setup.log'), 'a') : null;
+  let result;
+  try { result = spawnSync(command, args, { cwd, stdio: quiet ? ['ignore', log, log] : 'inherit', windowsHide: true }); }
+  finally { if (log !== null) fs.closeSync(log); }
+  if (result.error || result.status !== 0) throw new Error(`${command} failed: ${result.error?.message || result.status}${quiet ? '. See logs/setup.log.' : ''}`);
 }
 export function verifyDll(name) {
   const target = path.join(ROOT, 'runtime', name);
@@ -23,14 +26,14 @@ async function download(url, file) {
   if (!response.ok) throw new Error(`Download failed (${response.status}): ${url}. The build artifact may have expired; see README.md.`);
   fs.writeFileSync(file, Buffer.from(await response.arrayBuffer()));
 }
-export async function setup({ withGame = true } = {}) {
+export async function setup({ withGame = true, quiet = false } = {}) {
   for (const name of ['vendor', 'runtime', 'logs', 'data']) fs.mkdirSync(path.join(ROOT, name), { recursive: true });
   const backend = path.join(ROOT, 'vendor', 'LawinServer');
   const receipt = path.join(ROOT, 'runtime', 'backend-install.json');
   if (!fs.existsSync(path.join(backend, '.git'))) {
     if (fs.existsSync(backend)) throw new Error('vendor/LawinServer exists without Git metadata. Back it up separately before running setup again.');
-    run('git', ['clone', lock.backend.repository, backend]);
-    run('git', ['checkout', '--detach', lock.backend.commit], backend);
+    run('git', ['clone', lock.backend.repository, backend], ROOT, quiet);
+    run('git', ['checkout', '--detach', lock.backend.commit], backend, quiet);
   }
   let recordedCommit;
   if (fs.existsSync(receipt)) recordedCommit = JSON.parse(fs.readFileSync(receipt, 'utf8')).commit;
@@ -40,24 +43,24 @@ export async function setup({ withGame = true } = {}) {
     fs.writeFileSync(receipt, JSON.stringify({ commit: lock.backend.commit }));
   }
   if (!fs.existsSync(path.join(backend, 'node_modules', '.package-lock.json'))) {
-    if (process.platform === 'win32') run('cmd.exe', ['/d', '/c', 'npm.cmd ci --ignore-scripts --no-audit --no-fund'], backend);
-    else run('npm', ['ci', '--ignore-scripts', '--no-audit', '--no-fund'], backend);
+    if (process.platform === 'win32') run('cmd.exe', ['/d', '/c', 'npm.cmd ci --ignore-scripts --no-audit --no-fund'], backend, quiet);
+    else run('npm', ['ci', '--ignore-scripts', '--no-audit', '--no-fund'], backend, quiet);
   }
   patchBackend(backend);
   if (withGame) {
     for (const name of ['sinum.dll', 'console.dll', 'memory.dll']) {
       const file = path.join(ROOT, 'runtime', name);
       if (!fs.existsSync(file)) {
-        console.log(`Downloading ${name} from the pinned Reboot Launcher commit...`);
+        if (!quiet) console.log(`Downloading ${name} from the pinned Reboot Launcher commit...`);
         await download(`https://raw.githubusercontent.com/Auties00/Reboot-Launcher/${lock.launcherCommit}/gui/dependencies/dlls/${name}`, file);
       }
       verifyDll(name);
     }
     if (!fs.existsSync(path.join(ROOT, 'runtime', 'reboot.dll'))) {
-      console.log('Downloading the pinned Reboot game server...');
+      if (!quiet) console.log('Downloading the pinned Reboot game server...');
       const archive = path.join(ROOT, 'runtime', 'reboot.zip');
       await download(lock.gameServerArchive, archive);
-      run('powershell.exe', ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', path.join(ROOT, 'scripts', 'extract-server.ps1')]);
+      run('powershell.exe', ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', path.join(ROOT, 'scripts', 'extract-server.ps1')], ROOT, quiet);
     }
     verifyDll('reboot.dll');
   }

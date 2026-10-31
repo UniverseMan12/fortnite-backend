@@ -2,7 +2,7 @@
   "name": "fortnite-backend-local",
   "version": "0.1.0",
   "private": true,
-  "description": "English Windows launcher for a local Fortnite legacy backend",
+  "description": "Launcher for a local Fortnite legacy backend",
   "type": "module",
   "engines": { "node": ">=22" },
   "scripts": {

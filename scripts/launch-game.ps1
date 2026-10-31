@@ -87,9 +87,22 @@ try {
     if ($Mode -eq 'server') {
         $session.LoadLibrary($gameId, (Join-Path $projectRoot 'runtime\reboot.dll'))
         Write-Output '[server] Reboot loaded. Wait for Joinable: true in the Reboot window before joining.'
+        $deadline = (Get-Date).AddMinutes(2)
+        $listening = $false
+        while ((Get-Date) -lt $deadline) {
+            $game.Refresh()
+            if ($game.HasExited) { throw 'Game server exited before opening its game port.' }
+            $endpoint = Get-NetUDPEndpoint -LocalPort 7777 -ErrorAction SilentlyContinue | Where-Object { $_.OwningProcess -eq $gameId }
+            if ($endpoint) { $listening = $true; break }
+            Start-Sleep -Milliseconds 500
+        }
+        if (-not $listening) { throw 'Game server did not open UDP port 7777 within 2 minutes.' }
+        # Listening is a startup prerequisite, not proof of a successful playable match.
+        Write-Output 'LAUNCHER_READY:server'
     } else {
         $session.LoadLibrary($gameId, (Join-Path $projectRoot 'runtime\console.dll'))
         Write-Output '[client] Console loaded. Once the host is ready: press F8, type open 127.0.0.1:7777, press Enter.'
+        Write-Output 'LAUNCHER_READY:client'
     }
     $game.WaitForExit()
 } catch {
