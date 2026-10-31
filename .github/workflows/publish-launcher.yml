@@ -28,6 +28,10 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'The launcher build did not pass.' }
           $run = gh api "repos/$env:GH_REPO/actions/runs/$env:BUILD_RUN" | ConvertFrom-Json
           if ($run.head_sha -ne $env:SOURCE_COMMIT -or $run.conclusion -ne 'success') { throw 'Unexpected source build.' }
+          # Tag the publication commit: its only difference from the tested build
+          # must be this workflow. No extra workflow permission is required.
+          $comparison = gh api "repos/$env:GH_REPO/compare/$($env:SOURCE_COMMIT)...$($env:GITHUB_SHA)" | ConvertFrom-Json
+          if ($LASTEXITCODE -ne 0 -or $comparison.status -ne 'ahead' -or @($comparison.files).Count -ne 1 -or $comparison.files[0].filename -ne '.github/workflows/publish-launcher.yml') { throw 'Release source differs from the tested application.' }
       - uses: actions/download-artifact@v4
         with:
           name: Fortnite-Launcher-0.3.0-Windows-x64
@@ -55,7 +59,10 @@ jobs:
             $release = $existing | ConvertFrom-Json
             if (-not $release.isDraft) { throw 'This version is already public; refusing to replace its assets.' }
           } else {
-            gh release create $env:RELEASE_TAG --target $env:SOURCE_COMMIT --title 'Fortnite Launcher 0.3.0' --notes-file release/RELEASE-NOTES.md --draft
+            $head = gh api "repos/$env:GH_REPO/commits/main" --jq .sha
+            if ($LASTEXITCODE -ne 0 -or $head -ne $env:GITHUB_SHA) { throw 'The release branch moved; review before publishing.' }
+            Add-Content -LiteralPath release/RELEASE-NOTES.md -Value "`nBuilt and tested from commit $env:SOURCE_COMMIT. The release tag adds only publication workflow changes."
+            gh release create $env:RELEASE_TAG --target $env:GITHUB_SHA --title 'Fortnite Launcher 0.3.0' --notes-file release/RELEASE-NOTES.md --draft
             if ($LASTEXITCODE -ne 0) { throw 'Could not create release draft.' }
           }
           $assets = @(
