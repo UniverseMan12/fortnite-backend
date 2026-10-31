@@ -79,11 +79,13 @@ namespace LocalTools {
         if (!inventory) return 0;
         const char* mats[] = { "WoodItemData", "StoneItemData", "MetalItemData" };
         const char* ammo[] = { "AthenaAmmoDataBulletsLight", "AthenaAmmoDataBulletsMedium", "AthenaAmmoDataBulletsHeavy", "AthenaAmmoDataShells", "AmmoDataRockets" };
-        const int target = materials ? 999 : 200;
         int available = 0;
         for (int i = 0; i < (materials ? 3 : 5); ++i) {
             auto definition = FindObject<UFortItemDefinition>(materials ? mats[i] : ammo[i], nullptr, ANY_PACKAGE);
             if (!definition) continue;
+            const int limit = static_cast<int>(definition->GetMaxStackSize());
+            if (limit < 1) continue;
+            const int target = (std::min)(materials ? 999 : 200, limit);
             ++available;
             auto instance = inventory->FindItemInstance(definition);
             int count = instance ? instance->GetItemEntry()->GetCount() : 0;
