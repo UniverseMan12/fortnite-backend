@@ -1,0 +1,41 @@
+name: Build server with playlist selection
+on:
+  push:
+    paths:
+      - 'scripts/patch-reboot.js'
+      - '.github/workflows/build-server.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  build:
+    runs-on: windows-2022
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: Milxnor/Project-Reboot-3.0
+          ref: 10c659028ad9d6816f78226483f11a884bf81f57
+          path: upstream
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Apply launcher changes
+        run: node scripts/patch-reboot.js upstream
+      - uses: microsoft/setup-msbuild@v2
+      - name: Build game server
+        run: msbuild "upstream/Project Reboot 3.0.sln" /p:Configuration=Release /p:Platform=x64 /m:2 /verbosity:minimal
+      - name: Package server and license
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Path package | Out-Null
+          Copy-Item "upstream/x64/Release/Project Reboot 3.0.dll" package/reboot.dll
+          Copy-Item upstream/LICENSE package/REBOOT-LICENSE.txt
+          (Get-FileHash package/reboot.dll -Algorithm SHA256).Hash.ToLower() | Set-Content package/reboot.sha256
+      - uses: actions/upload-artifact@v4
+        with:
+          name: launcher-server
+          path: package/
+          retention-days: 90
+          if-no-files-found: error
