@@ -5,8 +5,6 @@
 #include <random>
 #include <cmath>
 
-void SetZoneToIndexHook(AFortGameModeAthena* mode, int phase);
-
 namespace InfinityShowdown {
     using Ref = LocalTools::TrackedObject;
     struct SavedItem { Ref definition; int count = 0, ammo = -1; std::string path; };
@@ -223,6 +221,9 @@ namespace InfinityShowdown {
         const int mission = solo->GetOffset("PlaylistMissionGen", false);
         if (mission >= 0) Put(playlist, "PlaylistMissionGen", solo->Get<UObject*>(mission));
         Put(playlist, "MaxSquadSize", 1); Put(playlist, "bUseDefaultSupplyDrops", false);
+        // ESafeZoneStartUp::StartsWithAirCraft in the 4.2 SDK. Let the engine
+        // create/register its indicator before its phase callback is invoked.
+        Put(playlist, "SafeZoneStartUp", uint8_t(2));
         for (auto name : {"SupplyDropInfoList", "SupplyDropModifierList"}) {
             const int offset = playlist->GetOffset(name,false);
             if (offset >= 0) playlist->Get<TArray<uint8_t>>(offset).ArrayNum = 0;
@@ -231,7 +232,7 @@ namespace InfinityShowdown {
     }
     bool BeginZone(AFortGameModeAthena* mode) {
         if (ZoneWorld.Get() != GetWorld()) { ZoneWorld = Ref(GetWorld()); ZoneStarted = false; HeldZone = {}; }
-        if (ZoneStarted) return false;
+        if (ZoneStarted || !mode || !mode->GetSafeZoneIndicator()) return false;
         ZoneStarted = true;
         Put(mode, "SafeZonePhase", 3);
         Put(mode->GetGameState(), "SafeZonePhase", uint8_t(3));
@@ -262,6 +263,7 @@ namespace InfinityShowdown {
     }
     static void TickBus(AFortGameModeAthena* mode, AFortGameStateAthena* game, double now) {
         if (BusRequested.exchange(false) && !BusStarted && game->GetGamePhase() < EAthenaGamePhase::Aircraft) {
+            Put(game, "CachedSafeZoneStartUp", uint8_t(2));
             BusStarted = true; mode->StartAircraftPhase();
         }
         // Also cover a bus started by the native countdown.
@@ -295,10 +297,10 @@ namespace InfinityShowdown {
             if (Buses.empty()) return;
             BusConfigured = BusStarted = true; BusStartedAt = now;
             Put(game,"AircraftStartTime",float(now)); Put(game,"SafeZonesStartTime",float(now));
-            // Initialize the fixed arena during departure, not after the last
-            // passenger exits. The jump RPC stays blocked until HoldZone has
-            // finished and the replicated drop-start time has been reached.
-            SetZoneToIndexHook(mode, 0); HoldZone(mode);
+            // StartsWithAirCraft performs native initialization, including
+            // spawning the indicator. Calling the phase routine ourselves
+            // before that lifecycle step dereferences a null indicator in 4.2.
+            HoldZone(mode);
             game->ForceNetUpdate(); Report("Battle Bus departing. Thanos selection starts 20 seconds after landing.");
         }
         if (!BusConfigured) return;
