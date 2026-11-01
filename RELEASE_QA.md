@@ -1,5 +1,12 @@
 # Desktop release checks
 
+## Alpha.4 Thanos reselection fix — test build
+
+- Restored Alpha.4 baseline with a shared 20-second cooldown after Thanos dies or disconnects. Duplicate death callbacks return before scheduling; final elimination also starts the cooldown. Normal player deaths do not restart it. Every eligible player can win the draw, including the previous Thanos after their existing respawn/landing delay.
+- [Native build 41327999569](https://github.com/UniverseMan12/fortnite-4-2-launcher/actions/runs/41327999569) compiled `1562a467694f98444c16ee2284a1eff5057f2b81` successfully. Native rules assertions passed for already-ready survivors waiting the full 20 seconds, the exact boundary, repeated cooldowns, empty pools, world reset and selection including the previous Thanos.
+- Artifact `13091703062` matched GitHub's archive SHA-256; the DLL matched its included checksum and the updated dependency pin. **45 Node tests passed**. All **852 staged and unpacked payload hashes** passed, including the new native pin and public profile checks.
+- The new multiplayer death-to-reselection behavior is **not yet verified in Fortnite**. No desktop/game automation was used for this change. Use the separately named `Fortnite-Launcher-0.4.0-alpha.4-thanos-delay-portable.exe` for the owner playtest; the original published Alpha.4 EXEs remain unchanged.
+
 ## 0.4.0-alpha.4 — download directly from Play (prerelease)
 
 - The owner's public Google Drive archive was retrieved without signing in: `4.20-CL-4072250.7z`, **8,946,548,760 bytes**, SHA-256 `d89a92ed1e4038627aa8bf0c0985c7eb16eab033a194c0f66c38f90285c8de4c`. The manifest selects **24,091,769,351 bytes** of game content; extra Epic launcher/redistributable folders are excluded.
