@@ -25,3 +25,5 @@ The original prototype was tested by the owner: bots spawned and could be killed
 ## Validation
 
 The C++ rules test covers the 100-participant cap, Infinity Showdown exclusion, team/self/death exclusions, the locked bus/drop window, distributed jump scheduling, shooting range, line-of-sight gating and burst cooldown. Native compilation and launcher regression tests are run before packaging. Full-match performance and native 4.2 behavior need the owner's game test before a stable release.
+
+Verified v2 native build: [41336114639](https://github.com/UniverseMan12/Nova_launcher_4.2/actions/runs/41336114639), source `9154637e7f65911fd62eb7825c848bfa13d4d3ca`. C++ bot/Infinity rules and MSBuild succeeded. The artifact archive checksum is `4ad0847a5a313647ec3344535ac555cac1fcd815a1b0d29a155214a41d2d0cef`; the packaged DLL checksum is `ac257c83fc9872140bab16397075c7e9863a96ca2ca49973271e3d2df22e23ca`. All 45 Node regression tests passed. Both staged and unpacked payloads passed all 852 file checks, the native DLL pin, public-profile verification and private-file exclusions. The owner's v2 gameplay test remains pending.
