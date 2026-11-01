@@ -463,7 +463,9 @@ namespace InfinityShowdown {
         // Use the actual 4.2 Carmine blueprint: it supplies the incoming trail,
         // sonic boom, falling audio and impact FX on each client. Moving a plain
         // FortPickup cannot reproduce that lifecycle.
-        auto type = LoadObject<UClass>(L"/Game/Athena/Playlists/Carmine/MeteorDrop/AthenaSupplyDrop_Meteor_Gauntlet.AthenaSupplyDrop_Meteor_Gauntlet_C");
+        auto blueprintClass = FindObject<UClass>(L"/Script/Engine.BlueprintGeneratedClass");
+        if (!blueprintClass) return false;
+        auto type = LoadObject<UClass>(L"/Game/Athena/Playlists/Carmine/MeteorDrop/AthenaSupplyDrop_Meteor_Gauntlet.AthenaSupplyDrop_Meteor_Gauntlet_C",blueprintClass);
         if (!type) return false;
         FTransform transform{}; transform.Translation = landing;
         transform.Translation.Z -= 150.f; // GroundAt includes pickup clearance.
@@ -490,7 +492,7 @@ namespace InfinityShowdown {
             landing.X,landing.Y,landing.Z,meteor->GetActorLocation().Z);
         return true;
     }
-    static void RetirePickup(AFortPickup* pickup, AFortPlayerPawn* pawn, double now) {
+    static void RetirePickup(AFortPickup* pickup, AFortPawn* pawn, double now) {
         // Replicate the same consumed state as a normal pickup before destroying
         // the actor. Immediate destruction skips the client pickup visual cleanup.
         pickup->FlushNetDormancy(); pickup->SetNetDormancy(ENetDormancy::DORM_Awake);
