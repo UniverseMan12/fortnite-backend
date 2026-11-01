@@ -1,18 +1,18 @@
 # Desktop release checks
 
-## 0.4.0-alpha.4 — built-in Fortnite download (development preview)
+## 0.4.0-alpha.4 — download directly from Play (prerelease)
 
 - The owner's public Google Drive archive was retrieved without signing in: `4.20-CL-4072250.7z`, **8,946,548,760 bytes**, SHA-256 `d89a92ed1e4038627aa8bf0c0985c7eb16eab033a194c0f66c38f90285c8de4c`. The manifest selects **24,091,769,351 bytes** of game content; extra Epic launcher/redistributable folders are excluded.
 - A full-size installer test resumed the final MiB from the real Drive endpoint, hashed the complete archive, extracted the game, validated every selected file's type/size and detected **4.2 / CL-4072250** before moving the finished folder into place. The archive cache was removed after success.
 - Regression coverage includes Range resume, servers ignoring Range, dropped connections, cancellation, wrong ranges, HTML/quota pages, hash mismatch, hard-linked caches, unsafe/duplicate archive paths, links, wrong game builds, insufficient space, extractor cancellation, retry after cancellation and preserving existing folders.
 - **45 Node tests passed** in the final combined run.
-- **13 desktop tests passed**, including the native folder picker, cancellation, preserving an existing selected game after failure, bounded download IPC, progress display and installed-folder feedback. The progress screen was visually inspected.
+- **13 desktop tests passed**, including the main Play download button, native folder picker, cancellation, choosing an existing installation from Play, bounded download IPC, progress display and automatic installed-folder feedback. The progress and cancel controls were checked at the minimum 940×700 window size and visually inspected.
 - The actual packaged EXE passed a live Drive download/cancel/resume check with a fresh profile. It retained partial bytes across retries and did not select an unfinished game folder. The temporary smoke-test cache was removed afterwards.
 - Installer and portable EXEs were rebuilt successfully. The portable test passed self-extraction, UI/artwork loading, verified payload preparation, invalid-folder recovery and clean close. Current-version checksums are generated in `dist/SHA256SUMS.txt`.
 - A separate packaged startup test launched the actual game-server helper from the newly downloaded installation up to Reboot settings, then stopped it cleanly. Original game settings were restored and no Fortnite processes remained.
 - All **852 staged and unpacked payload hashes** passed, including the native server pin, extractor/source pins and public backend profile templates. No game binaries were included in the launcher payload.
 - The first combined Node run overlapped the real-game smoke test; the existing display-repair guard correctly rejected that test while Fortnite was running. The combined suite was rerun after game shutdown.
-- Google Drive availability/quota remains external. Slow-drive/low-space scenarios, abrupt power loss and a clean-machine installer/uninstaller run are not fully exercised; automated tests cover the stated cancellation and validation paths. Alpha.4 is a local development preview, not a published release.
+- Google Drive availability/quota remains external. Slow-drive/low-space scenarios, abrupt power loss and a clean-machine installer/uninstaller run are not fully exercised; automated tests cover the stated cancellation and validation paths. Alpha.4 is an experimental prerelease; stable 0.3.1 remains separate.
 
 ## 0.4.0-alpha.3 — ordinary Thanos mode (prerelease)
 

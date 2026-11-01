@@ -2,11 +2,11 @@
 
 ![Fortnite 4.2 Launcher with Classic, Thanos and Infinity Showdown](docs/launcher-preview.png)
 
-*The screenshot shows the three-mode launcher. The latest published preview is [0.4.0-alpha.3](https://github.com/UniverseMan12/fortnite-4-2-launcher/releases/tag/v0.4.0-alpha.3). This branch adds in-launcher game installation for the upcoming alpha.4.*
+*Fortnite Launcher [0.4.0-alpha.4](https://github.com/UniverseMan12/fortnite-4-2-launcher/releases/tag/v0.4.0-alpha.4) adds game installation directly from the Play screen.*
 
 ## Download the game in the launcher
 
-In **Settings**, click **Download Fortnite 4.2** and choose an installation location. The launcher downloads the owner-provided 8.3 GiB archive, verifies its pinned SHA-256 checksum, extracts only the game files and selects the finished **Fortnite-4.2** folder. Allow about **32 GiB free space** during installation; the downloaded archive is removed after success.
+On **Play**, the main button says **Download Fortnite 4.2** when no game folder is selected. Click it and choose an installation location. Progress and **Cancel installation** stay on the Play screen. The launcher downloads the owner-provided 8.3 GiB archive, verifies its pinned SHA-256 checksum, extracts only the game files and automatically finds and selects the folder containing **FortniteGame** and **Engine**. The main button then becomes **Launch Fortnite** (or Host & play / Join friend). Already installed? Use **Choose folder** directly below the main controls. Allow about **32 GiB free space** during installation; the downloaded archive is removed after success.
 
 You can cancel at any stage. Choose the same location to resume the downloaded bytes; interrupted extraction starts again from the verified archive. Existing installations are never overwritten. If Google Drive's quota or sharing prevents downloading, retry later or select your existing game folder. No Google login, Git, Node.js or separate 7-Zip installation is required by the EXE.
 
@@ -36,7 +36,7 @@ The desktop launcher has Season 4 and Thanos banners and a prominent launch butt
 
 For this prerelease, choose **Fortnite-Launcher-0.4.0-alpha.2-x64-nsis.exe** to install, or **Fortnite-Launcher-0.4.0-alpha.2-x64-portable.exe** to run without installing. The [Releases page](https://github.com/UniverseMan12/fortnite-4-2-launcher/releases) also retains stable **v0.3.1**; build packages are produced by the **Build desktop launcher** workflow.
 
-1. Open the launcher and select **Settings → Browse folder**. Choose the folder containing FortniteGame and Engine.
+1. Open **Play** and click **Download Fortnite 4.2**, or use **Choose folder** if you already have the game. The downloaded installation is selected automatically; an existing installation should contain FortniteGame and Engine.
 2. Choose **Solo**, **Host friends**, or **Join friend**. Join accepts the host's invitation or VPN/LAN IPv4 address.
 3. Click **Launch Fortnite**. Components are prepared automatically. First use needs internet access.
 4. When hosting, choose your playlist in Reboot and click **Start server**. Press **Play** in Fortnite. Start **Bus Countdown** when everyone is on the island.

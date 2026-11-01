@@ -47,7 +47,9 @@ function renderRules() {
   if (showdown && mode !== 'join') $('mode-note').textContent = 'Choose Start server in Reboot. Once everyone has joined the island, click Start Bus. The server chooses Thanos automatically.';
   else if (thanos && local) $('mode-note').textContent = 'Thanos is preselected in Reboot. Click Start server, then Play in Fortnite. Start Bus Countdown when everyone is ready.';
   else $('mode-note').textContent = notes[mode];
-  $('launch-label').textContent = !$('game-path').value.trim() ? 'Choose game folder' : mode === 'join' ? 'Join friend' : mode === 'host' ? 'Host & play' : 'Launch Fortnite';
+  const missingGame = !$('game-path').value.trim();
+  $('launch-label').textContent = missingGame ? 'Download Fortnite 4.2' : mode === 'join' ? 'Join friend' : mode === 'host' ? 'Host & play' : 'Launch Fortnite';
+  $('launch-hint').textContent = busy ? latestState?.action === 'download' ? 'Keep the launcher open while installing.' : 'Keep the launcher open while playing.' : missingGame ? '8.3 GiB download · 32 GiB free space' : mode === 'join' ? 'Your host must be running first.' : 'Components are prepared automatically.';
 }
 function selectRules(value) {
   gameMode = value;
@@ -57,8 +59,8 @@ function selectRules(value) {
 }
 function updateFolder() {
   const value = $('game-path').value.trim();
-  $('install-title').textContent = value ? 'Fortnite installation selected' : 'Connect your game';
-  $('install-subtitle').textContent = value || 'One-time setup · Fortnite 4.2';
+  $('install-title').textContent = value ? 'Fortnite installation selected' : 'Already have Fortnite 4.2?';
+  $('install-subtitle').textContent = value || 'Select your existing game folder.';
   $('install-subtitle').title = value;
   $('edit-folder').textContent = value ? 'Change folder ↗' : 'Choose folder ↗';
   renderRules();
@@ -73,10 +75,8 @@ function render(state) {
     displayedInstall = state.installedPath; $('game-path').value = state.installedPath; updateFolder();
   }
   renderRules();
-  for (const el of document.querySelectorAll('.mode, #game-path, #host-address, #browse, #check, #prepare, #launch, #edit-folder, #download-game')) el.disabled = busy;
-  $('cancel-download').hidden = !(busy && state.action === 'download');
-  $('cancel-download').disabled = state.phase === 'stopping';
-  $('download-progress').hidden = state.action !== 'download';
+  for (const el of document.querySelectorAll('.mode, #game-path, #host-address, #browse, #check, #prepare, #launch, #edit-folder')) el.disabled = busy;
+  $('download-progress').hidden = state.action !== 'download' || Boolean(state.installedPath);
   const transfer = state.progress;
   const labels = {downloading:'Downloading',retrying:'Connection interrupted — resuming',verifying:'Checking download',inspecting:'Checking archive',extracting:'Unpacking game',checking:'Verifying Fortnite 4.2'};
   if (transfer && transfer.total > 0) {
@@ -90,6 +90,7 @@ function render(state) {
   }
   if (state.phase === 'stopping') $('download-info').textContent = state.message;
   $('launch').hidden = busy; $('stop').hidden = !busy; $('stop').disabled = state.phase === 'stopping';
+  $('stop').textContent = state.action === 'download' ? 'Cancel installation' : 'Stop session';
   const gameReady = state.events.some(event => event.message?.startsWith('Fortnite ready.'));
   $('top-status').textContent = state.phase === 'error' ? 'NEEDS ATTENTION' : state.phase === 'stopping' ? 'STOPPING' : busy ? gameReady ? 'IN SESSION' : 'GETTING READY' : 'READY';
   document.querySelector('.status-pill').classList.toggle('error', state.phase === 'error');
@@ -97,7 +98,6 @@ function render(state) {
   $('status-heading').textContent = state.phase === 'error' ? 'NEEDS ATTENTION' : 'YOUR NEXT STEP';
   const meaningful = state.events.filter(event => !event.message?.startsWith('Keep this window open.')).at(-1)?.message;
   $('status-message').textContent = busy && state.phase !== 'error' && state.phase !== 'stopping' ? meaningful || state.message : state.message;
-  $('launch-hint').textContent = busy ? 'Keep the launcher open while playing.' : mode === 'join' ? 'Your host must be running first.' : 'Components are prepared automatically.';
   document.querySelector('.session-status').classList.toggle('working', busy);
   $('activity-count').textContent = state.events.length;
   if (state.events.length) {
@@ -131,6 +131,11 @@ function renderAddresses(state) {
 }
 async function start(action) {
   $('error-banner').hidden = true;
+  if (action === 'launch' && !$('game-path').value.trim()) {
+    showPage('play');
+    await window.launcher.downloadGame();
+    return;
+  }
   if (!$('game-path').value.trim()) { showPage('setup'); $('game-path').focus(); throw new Error('Choose your Fortnite folder first.'); }
   if (action === 'launch' && mode === 'join' && !$('host-address').value.trim()) { showPage('play'); $('host-address').focus(); throw new Error('Enter your host’s VPN or LAN IPv4 address.'); }
   await window.launcher.start(action, { mode, gamePath: $('game-path').value, host: $('host-address').value, gameMode });
@@ -140,18 +145,14 @@ document.querySelectorAll('[data-page]').forEach(el => el.addEventListener('clic
 document.querySelectorAll('[data-mode]').forEach(el => el.addEventListener('click', () => selectMode(el.dataset.mode)));
 document.querySelectorAll('[data-rules]').forEach(el => el.addEventListener('click', () => selectRules(el.dataset.rules)));
 document.querySelectorAll('[data-link]').forEach(el => el.addEventListener('click', () => safely(() => window.launcher.link(el.dataset.link))));
-$('edit-folder').onclick = () => { showPage('setup'); $('game-path').focus(); };
+const browseFolder = () => safely(async () => { const selected = await window.launcher.browse(); if (selected) { $('game-path').value = selected; updateFolder(); } });
+$('edit-folder').onclick = browseFolder;
 $('back-play').onclick = () => showPage('play');
 $('game-path').oninput = updateFolder;
 $('host-address').oninput = saveSettings;
-$('browse').onclick = () => safely(async () => { const selected = await window.launcher.browse(); if (selected) { $('game-path').value = selected; updateFolder(); } });
+$('browse').onclick = browseFolder;
 for (const [button, action] of [['launch','launch'], ['check','check'], ['prepare','prepare']]) $(button).onclick = () => safely(() => start(action));
 $('stop').onclick = () => safely(() => window.launcher.stop());
-$('cancel-download').onclick = () => safely(() => window.launcher.stop());
-$('download-game').onclick = () => safely(async () => {
-  $('error-banner').hidden = true;
-  await window.launcher.downloadGame();
-});
 $('open-logs').onclick = () => safely(() => window.launcher.logs());
 $('minimize').onclick = () => safely(() => window.launcher.minimize());
 $('close').onclick = () => safely(() => window.launcher.close());

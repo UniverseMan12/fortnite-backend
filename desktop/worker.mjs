@@ -38,7 +38,7 @@ process.on('message', async message => {
         }
       }});
       send({type:'installed',gamePath});
-      status('Fortnite 4.2 installed and selected. Return to Play.', 'ok');
+      status('Fortnite 4.2 installed and selected. Ready to launch.', 'ok');
       send({type:'done',cancelled:false});
       return;
     }

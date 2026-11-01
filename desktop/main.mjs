@@ -35,7 +35,7 @@ function emit(event) {
     fs.writeFileSync(settingsPath(), JSON.stringify(saved));
     if (event.type === 'installed') state.installedPath = event.gamePath;
   }
-  if (event.type === 'done') { state.addresses = []; state.phase = event.cancelled ? 'idle' : 'complete'; state.message = state.action === 'download' ? event.cancelled ? 'Installation cancelled. Choose the same location to resume the download.' : 'Fortnite 4.2 installed. Return to Play and launch.' : event.cancelled ? 'Session stopped.' : 'All done. Ready for your next drop.'; }
+  if (event.type === 'done') { state.addresses = []; state.phase = event.cancelled ? 'idle' : 'complete'; state.message = state.action === 'download' ? event.cancelled ? 'Installation cancelled. Choose the same location to resume the download.' : 'Fortnite 4.2 installed. Ready to launch.' : event.cancelled ? 'Session stopped.' : 'All done. Ready for your next drop.'; }
   if (window && !window.isDestroyed()) window.webContents.send('launcher:state', structuredClone(state));
 }
 async function stop() {

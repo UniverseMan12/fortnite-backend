@@ -1,14 +1,24 @@
-# Fortnite Launcher 0.4.0-alpha.4 — development preview
+# Fortnite Launcher 0.4.0-alpha.4
 
 ## New: download Fortnite 4.2 in the launcher
 
-- Settings → **Download Fortnite 4.2** opens a native folder picker. The launcher downloads the 8.3 GiB archive, checks its pinned SHA-256, unpacks the game and selects the finished folder.
+- The main **Play** button displays **Download Fortnite 4.2** when no game folder is selected. Click it to choose the installation location; no trip to Settings is needed.
+- Progress and **Cancel installation** appear beside the main controls. After download and verification, the launcher unpacks the game, automatically selects the folder containing **FortniteGame** and **Engine**, and switches the button to **Launch Fortnite** (or Host & play / Join friend).
+- If the game is already installed, **Choose folder** opens a folder picker directly from Play.
 - Download progress, retry/resume after interruption and cancellation are built in. Choose the same location to resume; an interrupted extraction can reuse the verified archive.
 - About 32 GiB free space is required while installing. Existing folders are not overwritten. Only the actual Fortnite game subtree is extracted; the archive's extra Epic launcher installers are excluded.
 - The separate, pinned 7-Zip extractor and upstream source are bundled. Game files remain a separate download; no Google login or external extraction application is needed.
 - Google Drive quota/sharing failures are reported with a retry or existing-folder fallback. This feature supports 4.2 / CL-4072250 only.
 
-This preview has not been published as a GitHub release.
+Windows x64 installer and portable builds are provided below. The download is 8.3 GiB and installation needs about 32 GiB of free space. This is an experimental prerelease; v0.3.1 remains the stable version.
+
+## Alpha.4 downloads and validation
+
+- **Fortnite-Launcher-0.4.0-alpha.4-x64-nsis.exe** — installer.
+- **Fortnite-Launcher-0.4.0-alpha.4-x64-portable.exe** — portable application.
+- **SHA256SUMS.txt**, **RELEASE-NOTES.md** and **launcher-preview.png**.
+
+45 Node tests and 13 desktop tests passed. A full-size live download/resume, SHA-256 check, extraction and build detection passed. The installed game also started the real game-server helper and stopped cleanly. Packaged download cancellation/resume and portable checks passed. See the [alpha.4 QA record](https://github.com/UniverseMan12/fortnite-4-2-launcher/blob/v0.4.0-alpha.4/RELEASE_QA.md). Google Drive availability/quota is external; existing-folder selection remains available. The EXEs are unsigned, and clean-machine installation/uninstallation is not fully tested.
 
 ## Previous release: 0.4.0-alpha.3
 
