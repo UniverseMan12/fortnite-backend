@@ -96,4 +96,38 @@ ${before}`);
   }
   source = fs.readFileSync(gui, 'utf8').replace('Infinity Showdown: random Thanos, 10 respawns, retained loot.', 'Infinity Showdown: falling Gauntlet, 500 HP / 200 shield, sniper kit, full respawn refill.');
   fs.writeFileSync(gui, source);
+
+  // Upgrade existing v2 checkouts too. 4.2 uses WithSwap, while the later
+  // WithRequestedSwap RPC above is absent in its SDK.
+  const upgrade = (file, marker, before, after) => {
+    const target = path.join(directory,file);
+    const text = fs.readFileSync(target,'utf8').replaceAll('\r\n','\n');
+    if (text.includes(marker)) return;
+    if (text.split(before).length !== 2) throw new Error(`Infinity legacy pickup patch mismatch in ${file}`);
+    fs.writeFileSync(target,text.replace(before,after));
+  };
+  const signature = 'static void ServerHandlePickupHook(AFortPlayerPawn* Pawn, AFortPickup* Pickup, float InFlyTime, FVector InStartDirection, bool bPlayPickupSound);';
+  upgrade('FortPlayerPawn.h','ServerHandlePickupWithSwapOriginal',signature,
+    `static inline void (*ServerHandlePickupWithSwapOriginal)(AFortPlayerPawn*, AFortPickup*, const FGuid&, float, const FVector&, bool);
+\tstatic void ServerHandlePickupWithSwapHook(AFortPlayerPawn* Pawn, AFortPickup* Pickup, const FGuid& Swap, float InFlyTime, const FVector& InStartDirection, bool bPlayPickupSound);
+\t${signature}`);
+  const hook = 'void AFortPlayerPawn::ServerHandlePickupHook(AFortPlayerPawn* Pawn, AFortPickup* Pickup, float InFlyTime, FVector InStartDirection, bool bPlayPickupSound)';
+  upgrade('FortPlayerPawn.cpp','void AFortPlayerPawn::ServerHandlePickupWithSwapHook',hook,
+    `void AFortPlayerPawn::ServerHandlePickupWithSwapHook(AFortPlayerPawn* Pawn, AFortPickup* Pickup, const FGuid& Swap, float InFlyTime, const FVector& InStartDirection, bool bPlayPickupSound)
+{
+\tif (InfinityShowdown::HandlePickup(Pawn, Pickup)) return;
+\tif (ServerHandlePickupWithSwapOriginal) ServerHandlePickupWithSwapOriginal(Pawn, Pickup, Swap, InFlyTime, InStartDirection, bPlayPickupSound);
+}
+
+${hook}`);
+  const registration = '    static auto ServerHandlePickupInfoFn = FindObject<UFunction>(L"/Script/FortniteGame.FortPlayerPawn.ServerHandlePickupInfo");';
+  upgrade('dllmain.cpp','AFortPlayerPawn::ServerHandlePickupWithSwapHook',registration,
+    `    if (auto LegacyPickupWithSwap = FindObject<UFunction>(L"/Script/FortniteGame.FortPlayerPawn.ServerHandlePickupWithSwap")) {
+        Hooking::MinHook::Hook(FortPlayerPawnAthenaDefault, LegacyPickupWithSwap,
+            AFortPlayerPawn::ServerHandlePickupWithSwapHook, (PVOID*)&AFortPlayerPawn::ServerHandlePickupWithSwapOriginal, false);
+    }
+${registration}`);
+  const drop = 'void AFortPlayerController::ServerDropAllItemsHook(AFortPlayerController* PlayerController, UFortItemDefinition* IgnoreItemDef)\n{';
+  upgrade('FortPlayerController.cpp','InfinityShowdown::BlockGadgetInventoryDrop',drop,
+    `${drop}\n\tif (InfinityShowdown::BlockGadgetInventoryDrop(IgnoreItemDef)) return;`);
 }

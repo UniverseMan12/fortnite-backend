@@ -72,8 +72,13 @@ namespace InfinityShowdown {
         for (auto& pair : Players) if (pair.second.connected) Tell(Cast<AFortPlayerController>(pair.second.controller.Get()), text);
     }
     static UFortItemDefinition* Gauntlet() {
-        auto item = FindObject<UFortItemDefinition>("AGID_CarminePack", nullptr, ANY_PACKAGE);
+        auto item = FindObject<UFortItemDefinition>(L"/Game/Athena/Items/Gameplay/BackPacks/CarminePack/AGID_CarminePack.AGID_CarminePack");
         return item ? item : LoadObject<UFortItemDefinition>(L"/Game/Athena/Items/Gameplay/BackPacks/CarminePack/AGID_CarminePack.AGID_CarminePack");
+    }
+    bool BlockGadgetInventoryDrop(UFortItemDefinition* definition) {
+        // The 4.2 client sends this RPC before the pickup/swap request. Letting
+        // it run empties the inventory before Showdown can save the respawn kit.
+        return Enabled.load() && definition && definition == Gauntlet();
     }
     void GadgetApplied(AFortPlayerController* controller, UFortItemDefinition* definition, bool success) {
         if (Enabled.load() && controller == Assigning && definition == AssigningDefinition) AssignmentSucceeded = success;
@@ -545,6 +550,8 @@ namespace InfinityShowdown {
         auto property = pickup->GetProperty("bPickedUp",false);
         if (offset >= 0 && property) pickup->SetBitfieldValue(offset,GetFieldMask(property),true);
         if (auto notify = pickup->FindFunction("OnRep_bPickedUp")) pickup->ProcessEvent(notify);
+        if (auto hidden = pickup->FindFunction("SetActorHiddenInGame")) { bool value = true; pickup->ProcessEvent(hidden,&value); }
+        if (auto collision = pickup->FindFunction("SetActorEnableCollision")) { bool value = false; pickup->ProcessEvent(collision,&value); }
         pickup->ForceNetUpdate();
         RetiredActors.push_back({ Ref(pickup), now + 2 }); WorldGauntlet = {};
     }

@@ -19,6 +19,7 @@ namespace InfinityShowdown {
     inline std::string ReadInfo() { std::lock_guard<std::mutex> lock(InfoMutex); return Info; }
     bool OnDeath(AFortPlayerController* controller);
     bool HandlePickup(AFortPlayerPawn* pawn, AFortPickup* pickup);
+    bool BlockGadgetInventoryDrop(UFortItemDefinition* definition);
     bool HandleMeteorLoot(UObject* source, UFortItemDefinition* definition, const FVector& location, AFortPickup** result);
     bool CanJumpFromBus(AFortPlayerController* controller);
     void Tick(UNetDriver* driver);
