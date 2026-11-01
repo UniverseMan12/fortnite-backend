@@ -12,7 +12,7 @@ const userData=path.join(temporary,'profile');
 const env={...process.env,LAUNCHER_TEST_DATA:userData};delete env.ELECTRON_RUN_AS_NODE;
 let app;
 try {
-  app=await electron.launch({executablePath:path.join(ROOT,'dist/win-unpacked/Fortnite Launcher.exe'),env});
+  app=await electron.launch({executablePath:path.join(ROOT,'dist/win-unpacked/NOVA DROP.exe'),env});
   const page=await app.firstWindow();
   await expect(page.locator('#app-version')).toHaveText('0.4.0');
   await app.evaluate(({dialog},folder)=>{dialog.showOpenDialog=async()=>({canceled:false,filePaths:[folder]});},destination);

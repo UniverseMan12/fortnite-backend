@@ -13,4 +13,10 @@ The owner requested Season 4 images from the internet. These bundled images are 
 
 Fortnite artwork belongs to its respective rights holders; these sources are attribution, not a claim of a new redistribution license. Images are stored unchanged and cropped using CSS.
 
-`ui/logo.svg` is an original geometric portal and falling-shard logo. It does not copy Project Rift's logo. `scripts/create-icon.mjs` renders the matching Windows PNG/ICO without a font dependency.
+## NOVA DROP identity
+
+`ui/nova-drop.png` is the original NOVA DROP meteor emblem, generated with the built-in image-generation tool on November 1, 2026. The transparent PNG is used in the sidebar and startup screen. `scripts/create-icon.mjs` copies the unchanged image into the build resources; electron-builder converts it to the Windows icon. The previous `ui/logo.svg` is retained as an unused legacy asset. No Epic/Fortnite logo is reproduced in the NOVA DROP emblem.
+
+Generation prompt:
+
+> Use case: logo-brand. Create a polished original emblem for NOVA DROP, a private Fortnite Chapter 1 Season 4 (version 4.2) launcher. Asset type: square desktop app icon and launcher brand mark. A bold angular meteor descending diagonally from upper right to lower left, its sculpted comet trail forming a subtle N silhouette, with a small four-point cosmic spark carved into the meteor head. Fortnite Season 4 inspired stylized game art: confident chunky silhouette, crisp beveled facets, luminous icy cyan edges, vivid electric violet core, a restrained warm golden impact accent. Premium and energetic, readable at 32 pixels, balanced centered composition, ample clear margin around the complete emblem. Transparent background, real alpha, clean isolated shape, no square backdrop, no environment, no mockup, no text, no letters as text, no watermark, no official Epic or Fortnite logo. Make one finished logo emblem, not a sheet of variations. Broad solid shapes with controlled glow rather than thin fiddly lines.

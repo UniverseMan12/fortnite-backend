@@ -2,7 +2,7 @@
   "name": "fortnite-backend-local",
   "version": "0.4.0",
   "private": true,
-  "description": "Launcher for a local Fortnite legacy backend",
+  "description": "NOVA DROP launcher for Fortnite 4.2",
   "type": "module",
   "main": "desktop/main.mjs",
   "author": "UniverseMan12",
@@ -29,7 +29,7 @@
   },
   "build": {
     "appId": "com.universeman.fortnitelauncher",
-    "productName": "Fortnite Launcher",
+    "productName": "NOVA DROP",
     "directories": {
       "output": "dist"
     },
@@ -65,12 +65,12 @@
         "nsis",
         "portable"
       ],
-      "icon": "build/icon.ico",
+      "icon": "build/icon.png",
       "signAndEditExecutable": true,
       "signExecutable": false
     },
     "nsis": {
-      "artifactName": "Fortnite-Launcher-${version}-${arch}-nsis.${ext}",
+      "artifactName": "NOVA-DROP-${version}-${arch}-nsis.${ext}",
       "oneClick": false,
       "perMachine": false,
       "allowToChangeInstallationDirectory": true,
@@ -78,7 +78,7 @@
       "deleteAppDataOnUninstall": false
     },
     "portable": {
-      "artifactName": "Fortnite-Launcher-${version}-${arch}-portable.exe"
+      "artifactName": "NOVA-DROP-${version}-${arch}-portable.exe"
     }
   }
 }

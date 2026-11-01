@@ -4,7 +4,7 @@ import crypto from 'node:crypto';
 import { ROOT } from '../src/config.js';
 const dist=path.join(ROOT,'dist');
 const {version}=JSON.parse(fs.readFileSync(path.join(ROOT,'package.json'),'utf8'));
-const assets=['nsis','portable'].map(target=>`Fortnite-Launcher-${version}-x64-${target}.exe`);
+const assets=['nsis','portable'].map(target=>`NOVA-DROP-${version}-x64-${target}.exe`);
 if(!assets.every(name=>fs.existsSync(path.join(dist,name))))throw new Error('Both installer and portable EXEs for the current version must exist.');
 fs.writeFileSync(path.join(dist,'SHA256SUMS.txt'),assets.map(name=>crypto.createHash('sha256').update(fs.readFileSync(path.join(dist,name))).digest('hex')+'  '+name).join('\n')+'\n');
 fs.copyFileSync(path.join(ROOT,'RELEASE_NOTES.md'),path.join(dist,'RELEASE-NOTES.md'));

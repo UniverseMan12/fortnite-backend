@@ -1,6 +1,10 @@
-# Fortnite Launcher 0.4.0
+# NOVA DROP 0.4.0
 
 Regular Windows x64 release for Fortnite 4.2 / CL-4072250, including the launcher features introduced in the alpha series and the Thanos reselection fix.
+
+## New identity
+
+**NOVA DROP** is the new name of the Fortnite 4.2 launcher. Its original cyan, violet and gold meteor emblem appears in the sidebar, startup screen and Windows app icon. Existing settings and game-folder choices remain available.
 
 ## Download and play
 
@@ -25,8 +29,8 @@ Regular Windows x64 release for Fortnite 4.2 / CL-4072250, including the launche
 
 ## Downloads
 
-- **Fortnite-Launcher-0.4.0-x64-nsis.exe** — Windows installer.
-- **Fortnite-Launcher-0.4.0-x64-portable.exe** — run without installing.
+- **NOVA-DROP-0.4.0-x64-nsis.exe** — Windows installer.
+- **NOVA-DROP-0.4.0-x64-portable.exe** — run without installing.
 - **SHA256SUMS.txt**, **RELEASE-NOTES.md** and **launcher-preview.png**.
 
 Use the new launcher on the host to apply the server fix. Windows 10/11 x64 and the Visual C++ x64 runtime are required. Node.js and Git are not needed by EXE users. Fortnite game files remain a separate download. Existing launcher settings are kept in the same per-user data directory.

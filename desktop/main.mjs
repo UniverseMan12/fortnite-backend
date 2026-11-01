@@ -125,7 +125,7 @@ else {
   });
   handle('minimize', () => window.minimize());
   handle('close', () => window.close());
-  window = new BrowserWindow({ width: 1200, height: 820, minWidth: 940, minHeight: 700, backgroundColor: '#0b0c12', title: 'Fortnite Launcher',
+  window = new BrowserWindow({ width: 1200, height: 820, minWidth: 940, minHeight: 700, backgroundColor: '#0b0c12', title: 'NOVA DROP',
     icon: app.isPackaged ? path.join(process.resourcesPath, 'icon.png') : path.join(directory, '..', 'build', 'icon.png'),
     autoHideMenuBar: true, frame: false, show: false,
     webPreferences: { preload: path.join(directory, 'preload.cjs'), contextIsolation: true, sandbox: true, nodeIntegration: false, webSecurity: true } });

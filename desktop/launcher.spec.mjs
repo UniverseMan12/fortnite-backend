@@ -10,6 +10,9 @@ test.beforeEach(async () => {
   app = await electron.launch({ args: ['.'], env });
   page = await app.firstWindow();
   await expect(page.locator('#app-version')).toHaveText('0.4.0');
+  await expect(page).toHaveTitle('NOVA DROP');
+  await expect(page.locator('.brand img')).toHaveJSProperty('complete',true);
+  expect(await page.locator('.brand img').evaluate(image=>image.naturalWidth)).toBeGreaterThan(256);
 });
 test.afterEach(async () => { await app?.close(); fs.rmSync(userData, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 }); });
 

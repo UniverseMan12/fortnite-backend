@@ -13,7 +13,7 @@ fs.writeFileSync(path.join(fakeGame,'FortniteGame/Content/Paks/test.pak'),'fixtu
 const env = {...process.env,LAUNCHER_TEST_DATA:userData};delete env.ELECTRON_RUN_AS_NODE;
 let app;
 try {
-  app = await electron.launch({ executablePath:process.env.LAUNCHER_PACKAGED_EXE || path.join(ROOT,'dist/win-unpacked/Fortnite Launcher.exe'),env });
+  app = await electron.launch({ executablePath:process.env.LAUNCHER_PACKAGED_EXE || path.join(ROOT,'dist/win-unpacked/NOVA DROP.exe'),env });
   const page = await app.firstWindow();
   const errors=[];page.on('pageerror',error=>errors.push(error.message));
   await expect(page.locator('#app-version')).toHaveText('0.4.0');
