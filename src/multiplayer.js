@@ -15,10 +15,24 @@ export function validateHost(input) {
 }
 
 export function hostAddresses(interfaces = os.networkInterfaces()) {
+  const rank = item => /hamachi|radmin|tailscale|zerotier|wireguard/i.test(item.name) ? 0
+    : /virtual|vethernet|docker|wsl|loopback|host.only/i.test(item.name) ? 3
+    : /wi.?fi|wireless|^ethernet$/i.test(item.name) ? 1 : 2;
+  const seen = new Set();
   return Object.entries(interfaces).flatMap(([name, addresses]) =>
     addresses.filter(info => !info.internal && info.family === 'IPv4').flatMap(info => {
       try { return [{ name, address: validateHost(info.address) }]; } catch { return []; }
-    }));
+    })).sort((a,b) => rank(a) - rank(b)).filter(item => {
+      if (seen.has(item.address)) return false;
+      seen.add(item.address); return true;
+    });
+}
+
+// A clipboard invitation is data, never a shell command or an external URL.
+// Keep validateHost strict for backend and process-launch callers.
+export function parseJoinTarget(input) {
+  const text = String(input ?? '').trim();
+  return validateHost(text.replace(/^FN42:/i, ''));
 }
 
 export function multiplayerName(previous = {}) {

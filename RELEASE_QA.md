@@ -1,5 +1,20 @@
 # Desktop release checks
 
+## 0.4.0-alpha.2 — launcher redesign and runtime audit
+
+This prerelease is developed on `codex/launcher-redesign`. The alpha.1 release and stable `main` have not been replaced. The native game-server DLL remains the verified `bda98ce` build documented below. Release assets are built locally on Windows from this branch; the release body records the exact committed source.
+
+- Reviewed desktop IPC, startup/state handling, saved settings, worker coordination, local backend startup, HTTP/XMPP handling, cloudstorage, setup/download integrity, game-folder detection and native process ownership/cleanup code.
+- **34 Node tests passed** in the final combined suite, including backend spawn failure, host/guest invitation routing, cancellation, file validation, setup-command failures/timeouts and terminating the owned Windows setup process tree.
+- 10 desktop tests passed: persisted setup/invitations across restart, error recovery, overlapping starts, cancellation, next-step guidance, expired invitations, reduced motion, startup completion, renderer isolation and the three pages at 940×700, 1200×820 and 1440×960. Classic screenshots at 940×700 and 1200×820 were visually inspected.
+- Backend protocol regression tests passed after injecting a failing asynchronous profile command, a traversal-shaped cloudstorage request, an oversized settings upload and a malformed authenticated XMPP message. Profile commands also reject traversal, unknown names, arrays and nested query objects. Health and matchmaking remained available afterwards.
+- Production backend dependency audit: **0 findings**. Development build tree: **15 moderate findings**, all through minimatch and its dependents. npm suggests an incompatible electron-builder downgrade; it was not applied. These development packages are not shipped in the runtime.
+- Season 4 image sources and the original logo are documented in `desktop/ARTWORK.md`.
+- Final staged and unpacked payloads passed all **846 file hashes**, the pinned DLL check, public profile-template comparisons and private-file exclusions.
+- The rebuilt packaged EXE passed fresh-profile extraction, build detection, first-use preparation, public-host rejection and renderer-error checks with Infinity Showdown selected. It also started the actual Fortnite game-server helper up to Reboot playlist selection and stopped it cleanly. No Fortnite processes remained, and the user's original game settings were restored.
+- Both final alpha.2 EXEs were rebuilt successfully. The portable EXE passed self-extraction, artwork loading, verified payload bootstrap, invalid-folder recovery and closing the application. Checksums and the release-note asset are generated from these final outputs before upload; each uploaded asset's size and SHA-256 digest are verified before publication.
+- Native gameplay changes were not made in this redesign. Real two-PC VPN play and clean-machine installation/uninstallation remain unverified. Setup cancellation terminates owned processes, but interruption of a fresh source/CMD Git clone may leave a partial vendor checkout requiring manual recovery; the EXE uses its bundled backend.
+
 ## 0.4.0-alpha.1 — Infinity Showdown, November 1, 2026
 
 The release target is the experimental **v0.4.0-alpha.1** prerelease. The stable public release remains **v0.3.1**. The development branch has not been merged into `main`.

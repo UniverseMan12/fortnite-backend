@@ -6,7 +6,7 @@ import os from 'node:os';
 import { fork } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
-test('desktop worker runs the real session coordinator and cleans up both game roles on cancel', { timeout: 15000 }, async t => {
+for (const mode of ['host','join']) test(`desktop ${mode} worker routes invitations and cleans up owned roles on cancel`, { timeout: 15000 }, async t => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'launcher-worker-'));
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));
   fs.mkdirSync(path.join(root, 'src')); fs.mkdirSync(path.join(root, 'scripts'));
@@ -14,19 +14,21 @@ test('desktop worker runs the real session coordinator and cleans up both game r
   fs.copyFileSync(new URL('../src/session.js', import.meta.url), path.join(root, 'src', 'session.js'));
   const write = (name, content) => fs.writeFileSync(path.join(root, name), content);
   write('src/config.js', 'export const readConfig=()=>({}); export const prepareConfig=p=>({gamePath:p,version:"4.2"}); export const saveConfig=x=>x;');
-  write('src/multiplayer.js', 'export const validateHost=x=>x; export const multiplayerName=()=>"TestPlayer"; export const hostAddresses=()=>[{name:"Test VPN",address:"25.1.2.3"}];');
+  fs.copyFileSync(new URL('../src/multiplayer.js', import.meta.url), path.join(root,'src/multiplayer.js'));
   write('scripts/setup.js', 'export const setup=async()=>{}; export const verifyDll=()=>{};');
-  write('src/backend.js', 'import {EventEmitter} from "node:events"; export async function startBackend(){ const child=new EventEmitter(); child.exitCode=null; return {child,stop:async()=>process.send({type:"test-cleanup",role:"backend"})};}');
-  write('src/game.js', 'export function startGame(mode,onPhase=()=>{},options={}) {process.send({type:"test-game",role:mode,gameMode:options.gameMode});onPhase("configure"); let close; return {ready:Promise.resolve(),closed:new Promise(resolve=>close=resolve),stop:async()=>{process.send({type:"test-cleanup",role:mode});close({code:0});}};}');
+  write('src/backend.js', 'import {EventEmitter} from "node:events"; export async function startBackend(options){ process.send({type:"test-backend",gameHost:options.gameHost}); const child=new EventEmitter(); child.exitCode=null; return {child,stop:async()=>process.send({type:"test-cleanup",role:"backend"})};}');
+  write('src/game.js', 'export function startGame(mode,onPhase=()=>{},options={}) {process.send({type:"test-game",role:mode,gameMode:options.gameMode,gameHost:options.gameHost});onPhase("configure"); let close; return {ready:Promise.resolve(),closed:new Promise(resolve=>close=resolve),stop:async()=>{process.send({type:"test-cleanup",role:mode});close({code:0});}};}');
   const child = fork(fileURLToPath(new URL('../desktop/worker.mjs', import.meta.url)), { stdio: ['ignore','ignore','pipe','ipc'] });
   t.after(() => { if (child.exitCode === null) child.kill(); });
   const events = [];
   const closed = new Promise((resolve,reject) => {child.once('exit', code => code === 0 ? resolve() : reject(new Error(`Worker exited ${code}`))); child.once('error',reject);});
   child.on('message', message => { events.push(message); if (message.type==='status' && message.message.startsWith('Fortnite ready.')) child.send({type:'stop'}); });
-  child.send({ type:'start', action:'launch', options:{mode:'host',gamePath:'C:/game',gameMode:'infinity'}, root });
+  child.send({ type:'start', action:'launch', options:{mode,gamePath:'C:/game',gameMode:'infinity',host:'FN42:25.1.2.3'}, root });
   await closed;
-  assert.ok(events.some(x => x.type==='addresses'));
-  assert.ok(events.some(x => x.type==='test-game' && x.role==='server' && x.gameMode==='infinity'));
-  assert.deepEqual(events.filter(x=>x.type==='test-cleanup').map(x=>x.role), ['client','server','backend']);
+  assert.equal(events.some(x => x.type==='addresses'), mode==='host');
+  assert.equal(events.some(x => x.type==='test-game' && x.role==='server' && x.gameMode==='infinity'), mode==='host');
+  assert.equal(events.find(x=>x.type==='test-backend').gameHost, mode==='host'?'127.0.0.1':'25.1.2.3');
+  assert.equal(events.find(x=>x.type==='test-game'&&x.role==='client').gameHost, mode==='host'?'127.0.0.1':'25.1.2.3');
+  assert.deepEqual(events.filter(x=>x.type==='test-cleanup').map(x=>x.role), mode==='host'?['client','server','backend']:['client','backend']);
   assert.ok(events.some(x=>x.type==='done' && x.cancelled));
 });

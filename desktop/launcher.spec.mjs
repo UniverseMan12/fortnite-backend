@@ -9,7 +9,7 @@ test.beforeEach(async () => {
   const env = { ...process.env, LAUNCHER_TEST_DATA: userData }; delete env.ELECTRON_RUN_AS_NODE;
   app = await electron.launch({ args: ['.'], env });
   page = await app.firstWindow();
-  await expect(page.locator('#app-version')).toHaveText('0.4.0-alpha.1');
+  await expect(page.locator('#app-version')).toHaveText('0.4.0-alpha.2');
 });
 test.afterEach(async () => { await app?.close(); fs.rmSync(userData, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 }); });
 
@@ -30,6 +30,7 @@ test('navigation, mode selection and empty setup recovery', async () => {
 test('invalid installation fails visibly and allows another attempt', async () => {
   await page.locator('[data-page="setup"]').click();
   await page.locator('#game-path').fill(path.join(userData, 'missing-game'));
+  await page.locator('.advanced summary').click();
   await page.locator('#check').click();
   await expect(page.locator('#error-banner')).toContainText('missing FortniteGame');
   await expect(page.locator('#launch')).toBeEnabled();
@@ -59,10 +60,46 @@ test('renderer has no Node access and blocks injected script markup in errors', 
   expect(await page.evaluate(() => typeof window.process)).toBe('undefined');
   await page.locator('[data-page="setup"]').click();
   await page.locator('#game-path').fill('<img src=x onerror=window.pwned=1>');
+  await page.locator('.advanced summary').click();
   await page.locator('#check').click();
   await expect(page.locator('#error-banner')).toBeVisible();
   expect(await page.evaluate(() => window.pwned)).toBeUndefined();
   expect(await page.locator('#error-banner img').count()).toBe(0);
+});
+
+test('setup and invitations persist before launching and recover after a restart', async () => {
+  await page.locator('[data-page="setup"]').click();
+  await page.locator('#game-path').fill('C:/My Fortnite 4.2');
+  await page.locator('#back-play').click();
+  await page.locator('[data-mode="join"]').click();
+  await page.locator('#host-address').fill('FN42:25.1.2.3');
+  await expect.poll(()=>JSON.parse(fs.readFileSync(path.join(userData,'settings.json'),'utf8')).host).toBe('FN42:25.1.2.3');
+  await app.close();
+  const env={...process.env,LAUNCHER_TEST_DATA:userData}; delete env.ELECTRON_RUN_AS_NODE;
+  app=await electron.launch({args:['.'],env}); page=await app.firstWindow();
+  await expect(page.locator('#host-address')).toHaveValue('FN42:25.1.2.3');
+  await expect(page.locator('#game-path')).toHaveValue('C:/My Fortnite 4.2');
+  await expect(page.locator('#launch-label')).toHaveText('Join friend');
+  expect(await page.evaluate(()=>window.launcher.copyInvite('25.1.2.3').catch(e=>e.message))).toContain('Start hosting');
+});
+
+test('startup finishes without blocking controls and reduced motion skips it', async () => {
+  await expect(page.locator('#startup')).toBeHidden({timeout:3000});
+  await expect(page.locator('#launch')).toBeInViewport();
+  await page.emulateMedia({reducedMotion:'reduce'});
+  await page.reload();
+  await expect(page.locator('#startup')).toBeHidden();
+  await expect(page.locator('.brand img')).toHaveJSProperty('complete',true);
+});
+
+test('startup guidance retains the useful next action and clears expired invites', async () => {
+  await page.locator('[data-mode="host"]').click();
+  const state={busy:true,phase:'launch',message:'Keep this window open. Use Stop session to close the game.',events:[{type:'status',state:'ok',message:'Fortnite ready. Press Play in the lobby.',time:new Date().toISOString()},{type:'status',state:'info',message:'Keep this window open. Use Stop session to close the game.',time:new Date().toISOString()}],addresses:[{name:'Hamachi',address:'25.1.2.3'}]};
+  await app.evaluate(({BrowserWindow},state)=>BrowserWindow.getAllWindows()[0].webContents.send('launcher:state',state),state);
+  await expect(page.locator('#status-message')).toContainText('Press Play');
+  await expect(page.getByRole('button',{name:'Copy invitation for Hamachi'})).toBeVisible();
+  await app.evaluate(({BrowserWindow},state)=>BrowserWindow.getAllWindows()[0].webContents.send('launcher:state',{...state,busy:false,phase:'complete',addresses:[]}),state);
+  await expect(page.locator('#addresses')).toBeHidden();
 });
 
 test('main process rejects overlapping starts and handles immediate cancellation', async () => {
@@ -90,7 +127,7 @@ test('layout fits the minimum window size and keeps primary controls accessible'
 
 test('cinematic artwork, all pages and session controls fit supported window sizes', async () => {
   await expect(page.locator('.hero-art')).toHaveJSProperty('complete', true);
-  expect(await page.locator('.hero-art').evaluate(image => image.naturalWidth)).toBe(1000);
+  expect(await page.locator('.hero-art').evaluate(image => image.naturalWidth)).toBeGreaterThan(1000);
   await page.emulateMedia({ reducedMotion: 'reduce' });
   expect(await page.locator('.rift-particles').evaluate(el => getComputedStyle(el).display)).toBe('none');
   for (const [width, height] of [[940,700],[1200,820],[1440,960]]) {

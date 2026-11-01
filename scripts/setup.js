@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
-import { spawnSync } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
 import { pathToFileURL } from 'node:url';
 import { ROOT } from '../src/config.js';
 import { patchBackend } from './patch-backend.js';
@@ -9,12 +9,36 @@ import { downloadVerified } from './download.js';
 import { installBackendManifest } from './backend-dependencies.js';
 
 export const lock = JSON.parse(fs.readFileSync(path.join(ROOT, 'dependencies.lock.json'), 'utf8'));
-export function run(command, args, cwd = ROOT, quiet = false) {
+export async function run(command, args, cwd = ROOT, quiet = false, {signal, timeoutMs = 180000} = {}) {
+  signal?.throwIfAborted();
   const log = quiet ? fs.openSync(path.join(ROOT, 'logs', 'setup.log'), 'a') : null;
-  let result;
-  try { result = spawnSync(command, args, { cwd, stdio: quiet ? ['ignore', log, log] : 'inherit', windowsHide: true }); }
+  try {
+    await new Promise((resolve, reject) => {
+      const child = spawn(command, args, {cwd, stdio:quiet ? ['ignore',log,log] : 'inherit', windowsHide:true});
+      let failure, stopping = false;
+      const stop = error => {
+        if (stopping) return; stopping = true; failure = error;
+        if (!child.pid || child.exitCode !== null || child.signalCode !== null) return;
+        // Kill only this owned setup process and its descendants (e.g. npm's node).
+        if (process.platform === 'win32') {
+          const killer = spawn('taskkill.exe',['/PID',String(child.pid),'/T','/F'],{windowsHide:true,stdio:'ignore'});
+          killer.once('error',()=>child.kill());
+          killer.once('close',code=>{if(code!==0 && child.exitCode===null)child.kill();});
+        } else child.kill();
+      };
+      const abort = () => stop(signal.reason || new Error('Setup cancelled.'));
+      const timer = setTimeout(()=>stop(new Error(`${command} timed out after ${Math.round(timeoutMs/1000)} seconds.`)),timeoutMs);
+      signal?.addEventListener('abort',abort,{once:true});
+      child.once('error',error=>{failure=error;});
+      child.once('close',code=>{
+        clearTimeout(timer); signal?.removeEventListener('abort',abort);
+        if (failure || code !== 0) reject(failure || new Error(`${command} failed: ${code}${quiet ? '. See logs/setup.log.' : ''}`));
+        else resolve();
+      });
+      if (signal?.aborted) abort();
+    });
+  }
   finally { if (log !== null) fs.closeSync(log); }
-  if (result.error || result.status !== 0) throw new Error(`${command} failed: ${result.error?.message || result.status}${quiet ? '. See logs/setup.log.' : ''}`);
 }
 export function verifyDll(name) {
   const target = path.join(ROOT, 'runtime', name);
@@ -35,8 +59,8 @@ export async function setup({ withGame = true, quiet = false, signal } = {}) {
   }
   if (!bundled && !fs.existsSync(path.join(backend, '.git'))) {
     if (fs.existsSync(backend)) throw new Error('vendor/LawinServer exists without Git metadata. Back it up separately before running setup again.');
-    run('git', ['clone', lock.backend.repository, backend], ROOT, quiet);
-    run('git', ['checkout', '--detach', lock.backend.commit], backend, quiet);
+    await run('git', ['clone', lock.backend.repository, backend], ROOT, quiet, {signal});
+    await run('git', ['checkout', '--detach', lock.backend.commit], backend, quiet, {signal});
   }
   let recordedCommit;
   if (fs.existsSync(receipt)) recordedCommit = JSON.parse(fs.readFileSync(receipt, 'utf8')).commit;
@@ -48,8 +72,8 @@ export async function setup({ withGame = true, quiet = false, signal } = {}) {
   const dependenciesChanged = installBackendManifest(backend);
   if (bundled && dependenciesChanged) throw new Error('Bundled dependency versions do not match. Reinstall the launcher.');
   if (dependenciesChanged || !fs.existsSync(path.join(backend, 'node_modules', '.package-lock.json'))) {
-    if (process.platform === 'win32') run('cmd.exe', ['/d', '/c', 'npm.cmd ci --ignore-scripts --no-audit --no-fund'], backend, quiet);
-    else run('npm', ['ci', '--ignore-scripts', '--no-audit', '--no-fund'], backend, quiet);
+    if (process.platform === 'win32') await run('cmd.exe', ['/d', '/c', 'npm.cmd ci --ignore-scripts --no-audit --no-fund'], backend, quiet, {signal});
+    else await run('npm', ['ci', '--ignore-scripts', '--no-audit', '--no-fund'], backend, quiet, {signal});
   }
   patchBackend(backend);
   if (withGame) {
@@ -73,7 +97,7 @@ export async function setup({ withGame = true, quiet = false, signal } = {}) {
       if (!quiet) console.log('Downloading the pinned Reboot game server...');
       const archive = path.join(ROOT, 'runtime', 'reboot.zip');
       await downloadVerified(lock.gameServerArchive, archive, { sha256: lock.gameServerArchiveSha256, signal });
-      run('powershell.exe', ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', path.join(ROOT, 'scripts', 'extract-server.ps1')], ROOT, quiet);
+      await run('powershell.exe', ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', path.join(ROOT, 'scripts', 'extract-server.ps1')], ROOT, quiet, {signal});
     }
     verifyDll('reboot.dll');
   }

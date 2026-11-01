@@ -20,7 +20,7 @@ export function validateInstall(input) {
   const exe = path.join(root, 'FortniteGame', 'Binaries', 'Win64', 'FortniteClient-Win64-Shipping.exe');
   if (!fs.existsSync(exe) || !fs.statSync(exe).isFile()) throw new Error('FortniteClient-Win64-Shipping.exe is missing from FortniteGame/Binaries/Win64.');
   const paks = path.join(root, 'FortniteGame', 'Content', 'Paks');
-  if (!fs.existsSync(paks) || !fs.readdirSync(paks).some(name => name.endsWith('.pak'))) throw new Error('No .pak game files were found in FortniteGame/Content/Paks.');
+  if (!fs.existsSync(paks) || !fs.statSync(paks).isDirectory() || !fs.readdirSync(paks, {withFileTypes:true}).some(entry => entry.isFile() && entry.name.toLowerCase().endsWith('.pak'))) throw new Error('No .pak game files were found in FortniteGame/Content/Paks.');
   const fd = fs.openSync(exe, 'r');
   try {
     const header = Buffer.alloc(64); fs.readSync(fd, header, 0, 64, 0);

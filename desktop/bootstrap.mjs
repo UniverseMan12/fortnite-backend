@@ -3,11 +3,15 @@ import path from 'node:path';
 import crypto from 'node:crypto';
 
 export async function prepareWorkspace(payload, destination, signal) {
+  signal?.throwIfAborted();
   const manifestText = await fs.readFile(path.join(payload, 'payload.json'), 'utf8');
   const manifest = JSON.parse(manifestText);
   const digest = crypto.createHash('sha256').update(manifestText).digest('hex');
   const root = path.join(destination, digest.slice(0, 16));
-  try { if ((await fs.readFile(path.join(root, '.complete'), 'utf8')) === digest) return root; } catch {}
+  let complete;
+  try { complete = await fs.readFile(path.join(root, '.complete'), 'utf8'); } catch {}
+  signal?.throwIfAborted();
+  if (complete === digest) return root;
   await fs.mkdir(root, { recursive: true });
   for (const [relative, expected] of Object.entries(manifest.files)) {
     signal?.throwIfAborted();

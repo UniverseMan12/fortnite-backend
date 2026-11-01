@@ -17,6 +17,7 @@ export function startGame(mode, onPhase = () => {}, { multiplayer = false, gameH
   });
   const label = mode === 'server' ? 'Game server' : 'Fortnite';
   const readiness = createReadiness(mode, onPhase, () => new Error(label + ' could not start. See logs/' + mode + '-helper.log.'));
+  log.on('error', () => { readiness.fail(); helper.kill(); });
   const lines = createInterface({ input: helper.stdout });
   helper.stdout.pipe(log, { end: false });
   helper.stderr.pipe(log, { end: false });

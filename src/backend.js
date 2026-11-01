@@ -26,11 +26,15 @@ export async function startBackend({ port = 3551, xmppPort = 80, gameHost = '127
   });
   let error;
   child.on('error', e => { error = e; });
+  log.on('error', e => { error = new Error(`Could not write backend log: ${e.message}`); child.kill(); });
   child.stdout.pipe(log, { end: false }); child.stderr.pipe(log, { end: false });
-  child.once('close', () => log.end());
+  // Register before startup can fail: an ENOENT child can close before stop()
+  // is reached, and waiting for a second close event would hang cancellation.
+  let closed = false;
+  const closure = new Promise(resolve => child.once('close', () => { closed = true; log.end(); resolve(); }));
   const stop = async () => {
-    if (child.exitCode !== null || child.signalCode !== null) return;
-    await new Promise(resolve => { child.once('close', resolve); child.kill(); });
+    if (!closed && child.exitCode === null && child.signalCode === null) child.kill();
+    await closure;
   };
   try {
     for (let attempt = 0; attempt < 100; attempt++) {

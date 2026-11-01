@@ -1,10 +1,13 @@
 const $ = id => document.getElementById(id);
-let mode = 'solo', busy = false, gameMode = 'classic';
-const titles = { play: 'Back to the island.', setup: 'Make it yours.', activity: 'Behind every good drop.' };
+let mode = 'solo', busy = false, gameMode = 'classic', latestState, initialized = false;
+function saveSettings() {
+  if (initialized && !busy) return safely(() => window.launcher.saveSettings({mode, gameMode, gamePath:$('game-path').value, host:$('host-address').value}));
+}
+const titles = { play: 'Back to the island.', setup: 'A little setup. Then play.', activity: 'Your session, step by step.' };
 const notes = {
-  solo: 'Choose a playlist in Reboot, then click Start server. Press Play in Fortnite.',
-  host: 'Friends use your VPN IP to join. When everyone is on the island, click Start Bus Countdown in Reboot.',
-  join: 'Use the same VPN network and Fortnite 4.2 build. Press Play after your host is ready.'
+  solo: 'Play on your own. Choose a playlist and Start server in Reboot, then Play in Fortnite.',
+  host: 'Use the same LAN or VPN. Copy an invitation once hosting starts. When everyone is on the island, click Start Bus Countdown in Reboot.',
+  join: 'Paste your friend’s invitation. You both need Fortnite 4.2 and the same LAN or VPN network.'
 };
 function showPage(name) {
   document.querySelectorAll('.page').forEach(el => { el.hidden = el.id !== 'page-' + name; });
@@ -21,6 +24,8 @@ function selectMode(value) {
   $('join-row').hidden = mode !== 'join'; $('mode-note').textContent = notes[mode];
   $('hero-mode').textContent = { solo: 'SOLO SESSION', host: 'HOST A SESSION', join: 'JOIN YOUR SQUAD' }[mode];
   renderRules();
+  if (latestState) renderAddresses(latestState);
+  saveSettings();
 }
 function renderRules() {
   const showdown = gameMode === 'infinity';
@@ -30,33 +35,48 @@ function renderRules() {
     el.disabled = busy || mode === 'join';
   });
   document.querySelector('.hero').classList.toggle('showdown',showdown && mode !== 'join');
-  $('rules-description').textContent = mode === 'join' ? 'Your host chooses the game mode. Join their VPN, then enter their IP.' : showdown ? 'Random Thanos · 10 respawns each · Retained loot · 999 supplies · Small arena. Experimental: multiplayer playtesting is still required.' : 'Choose a playlist in Reboot and play your way.';
+  const art = document.querySelector('.hero-art'), useThanos = showdown && mode !== 'join';
+  const source = useThanos ? 'thanos.png' : 'art/season4-showdown.jpg';
+  if (art.getAttribute('src') !== source) art.src = source;
+  art.alt = useThanos ? 'Thanos holding the Infinity Gauntlet' : 'Carbide and Omega face off in Fortnite Season 4';
+  $('hero-title').innerHTML = useThanos ? 'INFINITY.<br>YOUR WAY.' : 'BRACE<br>FOR IMPACT.';
+  $('hero-description').textContent = useThanos ? 'One random Thanos. Ten second chances. Drop into a fixed endgame arena.' : 'The original island. The familiar drop. Your next session starts here.';
+  $('rules-description').textContent = mode === 'join' ? 'Your host chooses the game mode. Paste their invitation below.' : showdown ? 'Random Thanos · 10 respawns · Retained loot · Fixed arena. Experimental.' : 'Solo practice or a private match with friends.';
   if (showdown && mode !== 'join') $('mode-note').textContent = 'Choose Start server in Reboot. Once everyone has joined the island, click Start Bus. The server chooses Thanos automatically.';
   else $('mode-note').textContent = notes[mode];
+  $('launch-label').textContent = !$('game-path').value.trim() ? 'Choose game folder' : mode === 'join' ? 'Join friend' : mode === 'host' ? 'Host & play' : 'Launch Fortnite';
 }
 function selectRules(value) {
   gameMode = value;
   if (value === 'infinity' && mode === 'solo') selectMode('host');
   renderRules();
+  saveSettings();
 }
 function updateFolder() {
   const value = $('game-path').value.trim();
   $('install-title').textContent = value ? 'Fortnite installation selected' : 'Connect your game';
-  $('install-subtitle').textContent = value ? 'FortniteGame + Engine · verified when you launch' : 'Choose the folder containing FortniteGame and Engine.';
+  $('install-subtitle').textContent = value || 'One-time setup · Fortnite 4.2';
+  $('install-subtitle').title = value;
   $('edit-folder').textContent = value ? 'Change folder ↗' : 'Choose folder ↗';
+  renderRules();
+  saveSettings();
 }
 function showError(error) { $('error-banner').textContent = error.message || String(error); $('error-banner').hidden = false; }
 async function safely(action) { try { return await action(); } catch (error) { showError(error); } }
 function render(state) {
+  latestState = state;
   busy = state.busy;
   renderRules();
-  for (const el of document.querySelectorAll('.mode, #game-path, #host-address, #browse, #check, #prepare, #launch')) el.disabled = busy;
+  for (const el of document.querySelectorAll('.mode, #game-path, #host-address, #browse, #check, #prepare, #launch, #edit-folder')) el.disabled = busy;
   $('launch').hidden = busy; $('stop').hidden = !busy; $('stop').disabled = state.phase === 'stopping';
-  $('top-status').textContent = busy ? 'SESSION ACTIVE' : state.phase === 'error' ? 'NEEDS ATTENTION' : 'STANDBY';
+  const gameReady = state.events.some(event => event.message?.startsWith('Fortnite ready.'));
+  $('top-status').textContent = state.phase === 'error' ? 'NEEDS ATTENTION' : state.phase === 'stopping' ? 'STOPPING' : busy ? gameReady ? 'IN SESSION' : 'GETTING READY' : 'READY';
   document.querySelector('.status-pill').classList.toggle('error', state.phase === 'error');
   document.querySelector('.status-pill').classList.toggle('working', busy && state.phase !== 'error');
-  $('status-heading').textContent = busy ? 'SESSION IN PROGRESS' : state.phase === 'error' ? 'LET’S GET THIS SORTED' : state.phase === 'complete' ? 'CHECKS COMPLETE' : 'ALL SYSTEMS STANDING BY';
-  $('status-message').textContent = state.message;
+  $('status-heading').textContent = state.phase === 'error' ? 'NEEDS ATTENTION' : 'YOUR NEXT STEP';
+  const meaningful = state.events.filter(event => !event.message?.startsWith('Keep this window open.')).at(-1)?.message;
+  $('status-message').textContent = busy && state.phase !== 'error' && state.phase !== 'stopping' ? meaningful || state.message : state.message;
+  $('launch-hint').textContent = busy ? 'Keep the launcher open while playing.' : mode === 'join' ? 'Your host must be running first.' : 'Components are prepared automatically.';
   document.querySelector('.session-status').classList.toggle('working', busy);
   $('activity-count').textContent = state.events.length;
   if (state.events.length) {
@@ -69,13 +89,24 @@ function render(state) {
     $('activity-list').scrollTop = $('activity-list').scrollHeight;
   }
   if (state.phase === 'error') showError(state.message);
-  $('addresses').hidden = !state.addresses.length;
+  renderAddresses(state);
+}
+function renderAddresses(state) {
+  $('addresses').hidden = mode !== 'host' || !state.busy || !state.addresses.length;
+  const signature = JSON.stringify([state.busy, state.phase === 'stopping', state.addresses]);
+  if ($('addresses').dataset.signature === signature) return;
+  $('addresses').dataset.signature = signature;
   $('addresses').replaceChildren(...state.addresses.map(address => {
     const item = document.createElement('div'); item.className = 'address';
+    const details = document.createElement('div');
     const title = document.createElement('strong'); title.textContent = address.name;
     const ip = document.createElement('span'); ip.textContent = address.address;
-    item.append(title, ip); return item;
+    const copy = document.createElement('button'); copy.textContent = 'Copy invite'; copy.disabled = !state.busy || state.phase === 'stopping';
+    copy.setAttribute('aria-label', `Copy invitation for ${address.name}`);
+    copy.onclick = () => safely(async () => { await window.launcher.copyInvite(address.address); copy.textContent = 'Copied ✓'; });
+    details.append(title, ip); item.append(details, copy); return item;
   }));
+  if (state.addresses.length) { const hint = document.createElement('p'); hint.className = 'address-help'; hint.textContent = 'Choose your shared VPN or LAN. Send the invitation to your friend; they paste it into Join friend.'; $('addresses').append(hint); }
 }
 async function start(action) {
   $('error-banner').hidden = true;
@@ -89,7 +120,9 @@ document.querySelectorAll('[data-mode]').forEach(el => el.addEventListener('clic
 document.querySelectorAll('[data-rules]').forEach(el => el.addEventListener('click', () => selectRules(el.dataset.rules)));
 document.querySelectorAll('[data-link]').forEach(el => el.addEventListener('click', () => safely(() => window.launcher.link(el.dataset.link))));
 $('edit-folder').onclick = () => { showPage('setup'); $('game-path').focus(); };
+$('back-play').onclick = () => showPage('play');
 $('game-path').oninput = updateFolder;
+$('host-address').oninput = saveSettings;
 $('browse').onclick = () => safely(async () => { const selected = await window.launcher.browse(); if (selected) { $('game-path').value = selected; updateFolder(); } });
 for (const [button, action] of [['launch','launch'], ['check','check'], ['prepare','prepare']]) $(button).onclick = () => safely(() => start(action));
 $('stop').onclick = () => safely(() => window.launcher.stop());
@@ -97,6 +130,7 @@ $('open-logs').onclick = () => safely(() => window.launcher.logs());
 $('minimize').onclick = () => safely(() => window.launcher.minimize());
 $('close').onclick = () => safely(() => window.launcher.close());
 window.launcher.subscribe(render);
+setTimeout(() => { $('startup').hidden = true; }, 1200);
 safely(async () => {
   const initial = await window.launcher.initial();
   showPage('play');
@@ -105,5 +139,5 @@ safely(async () => {
   $('host-address').value = initial.settings.host || '';
   gameMode = initial.settings.gameMode === 'infinity' ? 'infinity' : 'classic';
   selectMode(['solo','host','join'].includes(initial.settings.mode) ? initial.settings.mode : 'solo');
-  updateFolder(); render(initial);
+  updateFolder(); render(initial); initialized = true;
 });

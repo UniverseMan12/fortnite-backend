@@ -7,6 +7,8 @@ const invoke = async (name, ...args) => {
 contextBridge.exposeInMainWorld('launcher', {
   initial: () => invoke('initial'), browse: () => invoke('browse'),
   start: (action, options) => invoke('start', action, options), stop: () => invoke('stop'),
+  copyInvite: address => invoke('copyInvite', address),
+  saveSettings: options => invoke('saveSettings', options),
   link: key => invoke('link', key), logs: () => invoke('logs'),
   minimize: () => invoke('minimize'), close: () => invoke('close'),
   subscribe: callback => { const handler = (_event, state) => callback(state); ipcRenderer.on('launcher:state', handler); return () => ipcRenderer.removeListener('launcher:state', handler); }

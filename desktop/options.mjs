@@ -8,6 +8,17 @@ export function validateOptions(value) {
   return { mode: value.mode, gamePath: value.gamePath.trim(), host, gameMode };
 }
 
+export function normalizeSettings(value) {
+  const saved = value && typeof value === 'object' && !Array.isArray(value) ? value : {};
+  return {
+    mode: ['solo','host','join'].includes(saved.mode) ? saved.mode : 'solo',
+    gameMode: saved.gameMode === 'infinity' ? 'infinity' : 'classic',
+    gamePath: typeof saved.gamePath === 'string' && saved.gamePath.length <= 2048 ? saved.gamePath : '',
+    host: typeof saved.host === 'string' && saved.host.length <= 64 ? saved.host : '',
+    ...(typeof saved.multiplayerName === 'string' && /^Player_[a-f0-9]{12}$/.test(saved.multiplayerName) ? {multiplayerName:saved.multiplayerName} : {})
+  };
+}
+
 export const links = Object.freeze({
   github: 'https://github.com/UniverseMan12/fortnite-4-2-launcher',
   releases: 'https://github.com/UniverseMan12/fortnite-4-2-launcher/releases',

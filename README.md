@@ -1,5 +1,9 @@
 # Fortnite 4.2 Launcher
 
+## Launcher redesign — 0.4.0-alpha.2
+
+**0.4.0-alpha.2** includes a simpler Play screen, original portal logo and startup animation, locally bundled Season 4 artwork, saved setup choices and copy/paste invitations for private multiplayer. Component preparation runs automatically at launch; manual checks are under **Settings → Repair and diagnostics**. See [release notes](RELEASE_NOTES.md), [current QA](RELEASE_QA.md) and the [alpha.2 downloads](https://github.com/UniverseMan12/fortnite-4-2-launcher/releases/tag/v0.4.0-alpha.2).
+
 ## Infinity Showdown alpha
 
 The **0.4.0-alpha.1 prerelease** adds **Classic / Infinity Showdown** to the launcher. The host can start a small late-game arena with a random Thanos, ten additional respawns per player, retained equipment and a starter kit with 999 materials/ammo. Friends join the host's VPN as before. See [the mode guide](INFINITY_SHOWDOWN.md) for setup, exact rules and in-game testing limits, and [release notes](RELEASE_NOTES.md) for changes. This is experimental server code; the stable 0.3.1 release does not contain this mode.
@@ -8,12 +12,12 @@ A launcher for Fortnite 4.2, with local play and private VPN/LAN multiplayer usi
 
 ## Desktop launcher
 
-The desktop launcher has a Thanos home screen, animated session cards and a prominent **Launch Fortnite** button. Choose **Solo / Host / Join**, select your game folder, and let the launcher prepare its components. Setup, live activity, host IPs and **Stop session** remain easy to reach. Reduced-motion preferences are respected. Closing the launcher also stops its owned game processes. The existing CMD launchers remain available.
+The desktop launcher has Season 4 and Thanos banners and a prominent launch button. Choose **Solo / Host friends / Join friend**, select your game folder, and let the launcher prepare its components. Settings, live activity, host invitations and **Stop session** remain easy to reach. Reduced-motion preferences are respected. Closing the launcher also stops its owned game processes. The existing CMD launchers remain available.
 
-For this prerelease, choose **Fortnite-Launcher-0.4.0-alpha.1-x64-nsis.exe** to install, or **Fortnite-Launcher-0.4.0-alpha.1-x64-portable.exe** to run without installing. The [Releases page](https://github.com/UniverseMan12/fortnite-4-2-launcher/releases) also retains stable **v0.3.1**; build packages are produced by the **Build desktop launcher** workflow.
+For this prerelease, choose **Fortnite-Launcher-0.4.0-alpha.2-x64-nsis.exe** to install, or **Fortnite-Launcher-0.4.0-alpha.2-x64-portable.exe** to run without installing. The [Releases page](https://github.com/UniverseMan12/fortnite-4-2-launcher/releases) also retains stable **v0.3.1**; build packages are produced by the **Build desktop launcher** workflow.
 
-1. Open the launcher and select **Setup → Browse folder**. Choose the folder containing FortniteGame and Engine.
-2. Choose **Solo**, **Host**, or **Join**. Join also needs the host's VPN/LAN IPv4 address.
+1. Open the launcher and select **Settings → Browse folder**. Choose the folder containing FortniteGame and Engine.
+2. Choose **Solo**, **Host friends**, or **Join friend**. Join accepts the host's invitation or VPN/LAN IPv4 address.
 3. Click **Launch Fortnite**. Components are prepared automatically. First use needs internet access.
 4. When hosting, choose your playlist in Reboot and click **Start server**. Press **Play** in Fortnite. Start **Bus Countdown** when everyone is on the island.
 

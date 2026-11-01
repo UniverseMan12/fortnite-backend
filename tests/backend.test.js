@@ -14,6 +14,9 @@ test('cancelled backend startup does not acquire a port or leave a process', asy
   const controller = new AbortController(); controller.abort();
   await assert.rejects(startBackend({ signal: controller.signal }), /abort/i);
 });
+test('failed backend spawn rejects promptly instead of waiting forever for a past close event', {timeout:5000}, async () => {
+  await assert.rejects(startBackend({directory:path.join(os.tmpdir(),`missing-backend-${Date.now()}`),port:await unusedPort(),xmppPort:await unusedPort()}), /ENOENT|spawn/);
+});
 async function unusedPort() {
   const server = net.createServer();
   await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
@@ -52,9 +55,19 @@ test('local backend: login, profile, F8 hotfix, matchmaking and XMPP readiness',
   assert.equal(profileResponse.status, 200);
   const profile = await profileResponse.json();
   assert.equal(profile.profileChanges[0].profile.profileId, 'athena');
+  for (const query of ['profileId=..%2fpackage', 'profileId=unknown', 'profileId=athena&profileId=common_core', 'profileId[x]=athena']) {
+    const rejected = await request(`/fortnite/api/game/v2/profile/TestPlayer/client/QueryProfile?${query}`, {method:'POST',body:'{}'});
+    assert.equal(rejected.status, 404, `Reject invalid profile selection: ${query}`);
+  }
   const session = await (await request('/fortnite/api/matchmaking/session/local')).json();
   assert.equal(session.serverAddress, '127.0.0.1'); assert.equal(session.serverPort, 7777);
   const unknown = await request('/this-route-does-not-exist'); assert.equal(unknown.status, 404);
+  const badCommand = await request('/fortnite/api/game/v2/profile/TestPlayer/client/SetAffiliateName?profileId=common_core', {method:'POST',body:'{}'});
+  assert.equal(badCommand.status, 500, 'async route errors must become responses, not process exits');
+  const traversal = await request('/fortnite/api/cloudstorage/system/..%2fConfig%2fconfig.ini');
+  assert.equal(traversal.status,404);
+  const tooLarge = await request('/fortnite/api/cloudstorage/user/TestPlayer/ClientSettings.Sav', {method:'PUT',headers:{...headers,'content-type':'application/octet-stream'},body:Buffer.alloc(1024*1024+1)});
+  assert.equal(tooLarge.status,413);
   const require = createRequire(path.join(vendor, 'package.json'));
   const WebSocket = require('ws');
   await new Promise((resolve, reject) => {
@@ -64,6 +77,20 @@ test('local backend: login, profile, F8 hotfix, matchmaking and XMPP readiness',
     ws.once('open', () => ws.send('<open xmlns="urn:ietf:params:xml:ns:xmpp-framing" to="prod.ol.epicgames.com" version="1.0"/>'));
     ws.once('message', data => { clearTimeout(timeout); assert.match(data.toString(), /<open/); ws.close(); resolve(); });
   });
+  await new Promise((resolve, reject) => {
+    const ws = new WebSocket(`ws://127.0.0.1:${xmppPort}`, 'xmpp');
+    const timeout = setTimeout(()=>{ws.terminate();reject(new Error('Malformed XMPP test timeout'));},3000);
+    ws.once('error', error=>{clearTimeout(timeout);reject(error);});
+    ws.once('open',()=>ws.send(`<auth>${Buffer.from('\0XmppTester\0LocalOnly').toString('base64')}</auth>`));
+    ws.on('message',data=>{
+      const xml=data.toString();
+      if (xml.includes('<success')) ws.send('<iq id="_xmpp_bind1"><bind><resource>test</resource></bind></iq>');
+      else if (xml.includes('<iq')) ws.send('<message><body>null</body></message>');
+    });
+    ws.once('close',code=>{clearTimeout(timeout);try{assert.equal(code,1008);resolve();}catch(error){reject(error);}});
+  });
+  assert.equal((await (await request('/local/health')).json()).ready,true);
+  assert.equal((await (await request('/fortnite/api/matchmaking/session/local')).json()).serverAddress,'127.0.0.1');
 });
 
 test('guest Play targets the VPN host while host Play stays local; player identities are distinct', { timeout: 30000 }, async t => {

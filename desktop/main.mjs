@@ -1,10 +1,10 @@
-import { app, BrowserWindow, ipcMain, dialog, shell } from 'electron';
+import { app, BrowserWindow, ipcMain, dialog, shell, clipboard } from 'electron';
 import fs from 'node:fs';
 import path from 'node:path';
 import { spawn } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { validateOptions, links } from './options.mjs';
+import { validateOptions, normalizeSettings, links } from './options.mjs';
 
 const directory = path.dirname(fileURLToPath(import.meta.url));
 const uiURL = pathToFileURL(path.join(directory, 'ui', 'index.html')).href;
@@ -13,9 +13,9 @@ let window, worker, workspace = path.resolve(directory, '..'), closing = false, 
 const state = { busy: false, phase: 'idle', message: 'Ready when you are.', events: [], addresses: [], version: app.getVersion() };
 const settingsPath = () => path.join(app.getPath('userData'), 'settings.json');
 function settings() {
-  try { return JSON.parse(fs.readFileSync(settingsPath(), 'utf8')); } catch {}
+  try { return normalizeSettings(JSON.parse(fs.readFileSync(settingsPath(), 'utf8'))); } catch {}
   if (!app.isPackaged && !process.env.LAUNCHER_TEST_DATA) {
-    try { return { ...JSON.parse(fs.readFileSync(path.join(workspace, 'config.local.json'), 'utf8')), mode: 'solo', host: '' }; } catch {}
+    try { return normalizeSettings({ ...JSON.parse(fs.readFileSync(path.join(workspace, 'config.local.json'), 'utf8')), mode: 'solo', host: '' }); } catch {}
   }
   return { mode: 'solo', gamePath: '', host: '' };
 }
@@ -24,7 +24,7 @@ function emit(event) {
     state.message = event.message;
     state.events.push({ ...event, time: new Date().toISOString() });
     state.events = state.events.slice(-150);
-    if (event.type === 'failure') state.phase = 'error';
+    if (event.type === 'failure') { state.phase = 'error'; state.addresses = []; }
   }
   if (event.type === 'addresses') state.addresses = event.addresses;
   if (event.type === 'workspace') workspace = event.root;
@@ -32,7 +32,7 @@ function emit(event) {
     const saved = settings(); saved.gamePath = event.gamePath;
     fs.writeFileSync(settingsPath(), JSON.stringify(saved));
   }
-  if (event.type === 'done') { state.phase = event.cancelled ? 'idle' : 'complete'; state.message = event.cancelled ? 'Session stopped.' : 'All done. Ready for your next drop.'; }
+  if (event.type === 'done') { state.addresses = []; state.phase = event.cancelled ? 'idle' : 'complete'; state.message = event.cancelled ? 'Session stopped.' : 'All done. Ready for your next drop.'; }
   if (window && !window.isDestroyed()) window.webContents.send('launcher:state', structuredClone(state));
 }
 async function stop() {
@@ -93,6 +93,19 @@ else {
   });
   handle('start', start);
   handle('stop', stop);
+  handle('saveSettings', input => {
+    if (state.busy) return false;
+    const previous = settings();
+    const next = normalizeSettings(input);
+    fs.mkdirSync(app.getPath('userData'), {recursive:true});
+    fs.writeFileSync(settingsPath(), JSON.stringify({...next, multiplayerName:previous.multiplayerName}));
+    return true;
+  });
+  handle('copyInvite', address => {
+    if (!state.busy || state.phase === 'stopping' || !state.addresses.some(item => item.address === address)) throw new Error('Start hosting before copying an invitation.');
+    clipboard.writeText(`FN42:${address}`);
+    return true;
+  });
   handle('link', key => { if (!Object.hasOwn(links, key)) throw new Error('Unknown link.'); return shell.openExternal(links[key]); });
   handle('logs', async () => {
     const folder = fs.existsSync(path.join(workspace, 'logs')) ? path.join(workspace, 'logs') : app.getPath('userData');

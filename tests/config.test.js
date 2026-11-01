@@ -17,11 +17,15 @@ test('installation validation rejects wrong folder, missing content and non-x64 
   fs.writeFileSync(exe, 'invalid');
   assert.throws(() => validateInstall(root), /pak/);
   fs.mkdirSync(path.join(root, 'FortniteGame', 'Content', 'Paks'), { recursive: true });
+  fs.mkdirSync(path.join(root, 'FortniteGame', 'Content', 'Paks', 'not-a-file.pak'));
+  assert.throws(() => validateInstall(root), /pak/);
   fs.writeFileSync(path.join(root, 'FortniteGame', 'Content', 'Paks', 'test.pak'), 'fixture');
   assert.throws(() => validateInstall(root), /Windows/);
   const pe = Buffer.alloc(128); pe.write('MZ'); pe.writeUInt32LE(64, 60); pe.write('PE\0\0', 64); pe.writeUInt16LE(0x8664, 68);
   fs.writeFileSync(exe, pe);
   assert.equal(validateInstall(`"${root}"`).root, root);
+  fs.renameSync(path.join(root, 'FortniteGame', 'Content', 'Paks', 'test.pak'), path.join(root, 'FortniteGame', 'Content', 'Paks', 'TEST.PAK'));
+  assert.equal(validateInstall(root).root, root);
   assert.throws(() => validateConfig({ version: '4.2', username: 'name -argument', gamePath: root }), /Player name/);
   assert.throws(() => validateConfig({ version: 'unknown', username: 'Player', gamePath: root }), /Version/);
   assert.equal(validateConfig({ version: '4.2', username: 'Player', gamePath: root }).version, '4.2');

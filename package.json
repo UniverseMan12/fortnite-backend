@@ -1,6 +1,6 @@
 {
   "name": "fortnite-backend-local",
-  "version": "0.4.0-alpha.1",
+  "version": "0.4.0-alpha.2",
   "private": true,
   "description": "Launcher for a local Fortnite legacy backend",
   "type": "module",
@@ -30,13 +30,55 @@
   "build": {
     "appId": "com.universeman.fortnitelauncher",
     "productName": "Fortnite Launcher",
-    "directories": { "output": "dist" },
-    "files": ["desktop/**/*", "!desktop/**/*.spec.mjs", "!desktop/playwright.config.mjs", "package.json"],
-    "extraResources": [{ "from": "build/payload", "to": "payload" }, { "from": "desktop", "to": "worker", "filter": ["worker.mjs", "bootstrap.mjs", "options.mjs"] }, { "from": "build/icon.png", "to": "icon.png" }],
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "desktop/**/*",
+      "!desktop/**/*.spec.mjs",
+      "!desktop/playwright.config.mjs",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "build/payload",
+        "to": "payload"
+      },
+      {
+        "from": "desktop",
+        "to": "worker",
+        "filter": [
+          "worker.mjs",
+          "bootstrap.mjs",
+          "options.mjs"
+        ]
+      },
+      {
+        "from": "build/icon.png",
+        "to": "icon.png"
+      }
+    ],
     "asar": true,
     "npmRebuild": false,
-    "win": { "target": ["nsis", "portable"], "icon": "build/icon.ico", "signAndEditExecutable": true, "signExecutable": false },
-    "nsis": { "artifactName": "Fortnite-Launcher-${version}-${arch}-nsis.${ext}", "oneClick": false, "perMachine": false, "allowToChangeInstallationDirectory": true, "runAfterFinish": false, "deleteAppDataOnUninstall": false },
-    "portable": { "artifactName": "Fortnite-Launcher-${version}-${arch}-portable.exe" }
+    "win": {
+      "target": [
+        "nsis",
+        "portable"
+      ],
+      "icon": "build/icon.ico",
+      "signAndEditExecutable": true,
+      "signExecutable": false
+    },
+    "nsis": {
+      "artifactName": "Fortnite-Launcher-${version}-${arch}-nsis.${ext}",
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "runAfterFinish": false,
+      "deleteAppDataOnUninstall": false
+    },
+    "portable": {
+      "artifactName": "Fortnite-Launcher-${version}-${arch}-portable.exe"
+    }
   }
 }

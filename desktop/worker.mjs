@@ -24,13 +24,13 @@ process.on('message', async message => {
     send({ type: 'workspace', root });
     const module = name => import(pathToFileURL(path.join(root, name)).href);
     const { prepareConfig, readConfig, saveConfig } = await module('src/config.js');
-    const { validateHost, multiplayerName, hostAddresses } = await module('src/multiplayer.js');
+    const { parseJoinTarget, multiplayerName, hostAddresses } = await module('src/multiplayer.js');
     const { setup, verifyDll } = await module('scripts/setup.js');
     const { startBackend } = await module('src/backend.js');
     const { startGame } = await module('src/game.js');
     const { runSession } = await module('src/session.js');
     controller.signal.throwIfAborted();
-    const host = message.action === 'launch' && options.mode === 'join' ? validateHost(options.host) : '127.0.0.1';
+    const host = message.action === 'launch' && options.mode === 'join' ? parseJoinTarget(options.host) : '127.0.0.1';
     const old = readConfig();
     const config = prepareConfig(options.gamePath, old);
     config.multiplayerName = /^Player_[a-f0-9]{12}$/.test(message.playerName ?? '') ? message.playerName : multiplayerName(old);

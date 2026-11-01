@@ -5,7 +5,12 @@ import os from 'node:os';
 import path from 'node:path';
 import crypto from 'node:crypto';
 import { prepareWorkspace } from '../desktop/bootstrap.mjs';
-import { validateOptions } from '../desktop/options.mjs';
+import { validateOptions, normalizeSettings } from '../desktop/options.mjs';
+
+test('corrupt saved settings recover without losing valid user selections', () => {
+  for (const value of [null, 'broken', [], 42, {gamePath:[],host:{},mode:'invalid'}]) assert.deepEqual(normalizeSettings(value), {mode:'solo',gameMode:'classic',gamePath:'',host:''});
+  assert.deepEqual(normalizeSettings({mode:'join',gamePath:'C:/game',host:'FN42:25.1.2.3',gameMode:'infinity',unknown:1}), {mode:'join',gameMode:'infinity',gamePath:'C:/game',host:'FN42:25.1.2.3'});
+});
 
 test('desktop launch requests reject unsupported actions and missing paths', () => {
   for (const value of [null, {}, { mode: 'shell', gamePath: 'C:/game' }, { mode: 'solo', gamePath: '' }]) assert.throws(() => validateOptions(value));
@@ -29,6 +34,8 @@ test('packaged workspace verifies payload integrity, rejects path traversal and 
   await fs.writeFile(path.join(workspace, 'user-profile.json'), 'keep');
   assert.equal(await prepareWorkspace(payload, destination), workspace);
   assert.equal(await fs.readFile(path.join(workspace, 'user-profile.json'), 'utf8'), 'keep');
+  const cachedAbort = new AbortController(); cachedAbort.abort();
+  await assert.rejects(prepareWorkspace(payload, destination, cachedAbort.signal), /abort/i);
   await fs.writeFile(path.join(payload, 'payload.json'), JSON.stringify({ files: { '../outside': hash } }));
   await assert.rejects(prepareWorkspace(payload, destination), /Invalid bundled file path/);
   const controller = new AbortController(); controller.abort();

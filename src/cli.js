@@ -6,7 +6,7 @@ import { startBackend } from './backend.js';
 import { startGame } from './game.js';
 import { runSession } from './session.js';
 import { folderPrompt, showStatus } from './status.js';
-import { validateHost, hostAddresses, multiplayerName } from './multiplayer.js';
+import { parseJoinTarget, hostAddresses, multiplayerName } from './multiplayer.js';
 
 const controller = new AbortController();
 let rl;
@@ -50,8 +50,8 @@ async function main() {
       if (join && config) {
         gameHost = '';
         while (!gameHost && !controller.signal.aborted) {
-          const answer = await rl.question('Host VPN or LAN IPv4: ', { signal: controller.signal });
-          try { gameHost = validateHost(answer); }
+          const answer = await rl.question('Host invitation or VPN/LAN IPv4: ', { signal: controller.signal });
+          try { gameHost = parseJoinTarget(answer); }
           catch (error) { showStatus(error.message, 'error'); }
         }
       }
@@ -67,11 +67,11 @@ async function main() {
     if (process.argv.includes('--check')) return;
   }
   showStatus('Preparing components...', 'pending');
-  await setup({ withGame: !backendOnly, quiet: true });
+  await setup({ withGame: !backendOnly, quiet: true, signal:controller.signal });
   showStatus('Components ready', 'ok');
   if (controller.signal.aborted) return;
   if (backendOnly) {
-    const backend = await startBackend();
+    const backend = await startBackend({signal:controller.signal});
     try {
       showStatus('Backend ready. Ctrl+C stops it.', 'ok');
       if (!controller.signal.aborted && backend.child.exitCode === null) {
@@ -82,7 +82,7 @@ async function main() {
     return;
   }
   await runSession({
-    startBackend: () => startBackend({ gameHost }),
+    startBackend: () => startBackend({ gameHost, signal:controller.signal }),
     startGame: (mode, phase) => startGame(mode, phase, { multiplayer: host || join, gameHost }),
     join, status: showStatus, signal: controller.signal,
     onHostReady: () => {
