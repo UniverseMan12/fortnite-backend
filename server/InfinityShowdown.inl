@@ -21,7 +21,6 @@ namespace InfinityShowdown {
     struct Player {
         Ref controller, protectedPawn;
         InfinityRules::Lives lives;
-        InfinityRules::Landing landing;
         std::vector<SavedItem> equipment;
         Appearance appearance;
         bool connected = false, kit = false, transformed = false, restore = false;
@@ -39,10 +38,15 @@ namespace InfinityShowdown {
     static bool BusStarted = false, BusConfigured = false, BusExited = false;
     static double BusStartedAt = 0;
     static std::vector<Ref> Buses;
-    static std::string Thanos, PreviousThanos;
+    static std::string Thanos;
+    static InfinityRules::GauntletCycle GauntletState;
+    static Ref WorldGauntlet;
+    static FVector GauntletLanding;
+    static bool SkyDrop = true;
+    static double FallStartedAt = 0;
     static std::mt19937 Random(std::random_device{}());
     static bool AssignmentSucceeded = false, Faulted = false;
-    static double NextTick = 0, NextSelection = 0;
+    static double NextTick = 0;
     static AFortPlayerController* Assigning = nullptr;
     static UFortItemDefinition* AssigningDefinition = nullptr;
 
@@ -112,14 +116,15 @@ namespace InfinityShowdown {
         inventory->Update(); player.restore = false; player.transformed = false;
         player.equipment.clear(); return true;
     }
-    static bool AddKit(AFortPlayerControllerAthena* controller) {
+    static bool AddKit(AFortPlayerControllerAthena* controller, bool weapons = true) {
         auto inventory = controller->GetWorldInventory(); if (!inventory) return false;
         auto rifle = FindObject<UFortWeaponItemDefinition>("WID_Assault_AutoHigh_Athena_SR_Ore_T03", nullptr, ANY_PACKAGE);
         auto pump = FindObject<UFortWeaponItemDefinition>("WID_Shotgun_Standard_Athena_R_Ore_T03", nullptr, ANY_PACKAGE);
         if (!pump) pump = FindObject<UFortWeaponItemDefinition>("WID_Shotgun_Standard_Athena_C_Ore_T03", nullptr, ANY_PACKAGE);
-        if (!rifle || !pump) return false;
-        if (!inventory->FindItemInstance(rifle)) inventory->AddItem(rifle, nullptr, 1, rifle->GetClipSize());
-        if (!inventory->FindItemInstance(pump)) inventory->AddItem(pump, nullptr, 1, pump->GetClipSize());
+        auto sniper = FindObject<UFortWeaponItemDefinition>("WID_Sniper_BoltAction_Scope_Athena_SR_Ore_T03", nullptr, ANY_PACKAGE);
+        if (!rifle || !pump || !sniper) return false;
+        if (weapons) for (auto weapon : {rifle, pump, sniper})
+            if (!inventory->FindItemInstance(weapon)) inventory->AddItem(weapon, nullptr, 1, weapon->GetClipSize());
         const char* supplies[] = {"WoodItemData","StoneItemData","MetalItemData","AthenaAmmoDataBulletsLight","AthenaAmmoDataBulletsMedium","AthenaAmmoDataBulletsHeavy","AthenaAmmoDataShells","AmmoDataRockets"};
         for (auto name : supplies) if (auto def = FindObject<UFortItemDefinition>(name, nullptr, ANY_PACKAGE)) {
             auto item = inventory->FindItemInstance(def);
@@ -127,8 +132,20 @@ namespace InfinityShowdown {
             if (item) inventory->ModifyCount(item, 999, false, nullptr, false);
         }
         const char* healing[] = {"Athena_ShieldSmall", "Athena_Medkit"};
-        for (auto name : healing) if (auto def = FindObject<UFortItemDefinition>(name, nullptr, ANY_PACKAGE))
-            if (!inventory->FindItemInstance(def)) inventory->AddItem(def, nullptr, name == healing[0] ? 6 : 3);
+        for (auto name : healing) if (auto def = FindObject<UFortItemDefinition>(name, nullptr, ANY_PACKAGE)) {
+            auto item = inventory->FindItemInstance(def);
+            const int count = name == healing[0] ? 6 : 3;
+            if (!item) inventory->AddItem(def, nullptr, count);
+            else inventory->ModifyCount(item, count, false, nullptr, false);
+        }
+        // Refill every retained weapon, including weapons collected during play.
+        auto& items = inventory->GetItemList().GetItemInstances();
+        for (int i = 0; i < items.Num(); ++i) if (auto item = items.at(i)) {
+            auto entry = item->GetItemEntry();
+            auto weapon = Cast<UFortWeaponItemDefinition>(entry->GetItemDefinition());
+            if (weapon && weapon->GetClipSize() > 0) inventory->CorrectLoadedAmmo(entry->GetItemGuid(), weapon->GetClipSize());
+        }
+        LocalTools::RefillMagazine(controller);
         inventory->Update(); return true;
     }
     static FVector ArenaCenter(AFortGameModeAthena* mode, const FVector& fallback) {
@@ -339,7 +356,7 @@ namespace InfinityShowdown {
             // spawning the indicator. Calling the phase routine ourselves
             // before that lifecycle step dereferences a null indicator in 4.2.
             HoldZone(mode);
-            game->ForceNetUpdate(); Report("Battle Bus departing. Thanos selection starts 20 seconds after landing.");
+            game->ForceNetUpdate(); Report("Battle Bus departing. The Infinity Gauntlet will fall into the arena after the flight.");
         }
         if (!BusConfigured) return;
         const bool locked = !InfinityRules::CanLeaveBus(true, HeldZone.Get() != nullptr, true, now - BusStartedAt);
@@ -404,6 +421,98 @@ namespace InfinityShowdown {
         if (!params[result]) return false;
         location = *reinterpret_cast<FVector*>(params.data()+hit+impact); location.Z += 150; return true;
     }
+    static void QueueGauntlet(const FVector& location, double now, bool sky = false) {
+        GauntletLanding = location; SkyDrop = sky;
+        GauntletState.Schedule(now, sky ? InfinityRules::GauntletDelay : 0);
+        WorldGauntlet = {}; Thanos.clear();
+    }
+    static void MoveGauntlet(AFortPickup* pickup, const FVector& location) {
+        // Keep native pickup interpolation and actor replication at the same point.
+        auto data = pickup->GetPickupLocationData();
+        data->GetLootInitialPosition() = location; data->GetLootFinalPosition() = location;
+        data->GetFinalTossRestLocation() = location; data->GetTossState() = EFortPickupTossState::AtRest;
+        pickup->TeleportTo(location, FRotator());
+        pickup->OnRep_PickupLocationData(); pickup->ForceNetUpdate();
+    }
+    static void TickGauntlet(double now) {
+        if (GauntletState.Due(now)) {
+            auto definition = Gauntlet(); if (!definition) { Faulted = true; Broadcast("Infinity Gauntlet asset unavailable. Restart with Classic."); return; }
+            auto location = GauntletLanding;
+            const float dx = location.X - FixedCenter.X, dy = location.Y - FixedCenter.Y;
+            // An airborne/storm death must not strand the only gauntlet outside the arena.
+            if (SkyDrop || dx*dx + dy*dy > FixedArena.radius*FixedArena.radius*.81f) {
+                location = FixedCenter;
+                if (SkyDrop) {
+                    const float angle = std::uniform_real_distribution<float>(0.f,6.2831853f)(Random);
+                    const float radius = std::uniform_real_distribution<float>(.15f,.55f)(Random) * FixedArena.radius;
+                    location.X += std::cos(angle)*radius; location.Y += std::sin(angle)*radius;
+                }
+            }
+            if (!GroundAt(location)) { GauntletState.due = now + 1; Report("Gauntlet drop delayed: finding a safe landing point."); return; }
+            GauntletLanding = location;
+            if (SkyDrop) location.Z += InfinityRules::GauntletHeight;
+            PickupCreateData data;
+            data.ItemEntry = FFortItemEntry::MakeItemEntry(definition,1,-1,MAX_DURABILITY);
+            if (!data.ItemEntry) { GauntletState.due = now + 1; return; }
+            data.bShouldFreeItemEntryWhenDeconstructed = true; data.SpawnLocation = location;
+            data.SourceType = EFortPickupSourceTypeFlag::GetOtherValue(); data.bToss = false;
+            auto pickup = AFortPickup::SpawnPickup(data);
+            if (!pickup) { GauntletState.due = now + 1; return; }
+            const int movement = pickup->GetOffset("MovementComponent",false);
+            if (movement >= 0) if (auto component = pickup->Get<UObject*>(movement)) {
+                if (auto stop = component->FindFunction("StopMovementImmediately")) component->ProcessEvent(stop);
+                if (auto tick = component->FindFunction("SetComponentTickEnabled")) { bool enabled = false; component->ProcessEvent(tick,&enabled); }
+            }
+            if (auto replicate = pickup->FindFunction("SetReplicateMovement")) { bool enabled = true; pickup->ProcessEvent(replicate,&enabled); }
+            pickup->SetNetDormancy(ENetDormancy::DORM_Awake);
+            WorldGauntlet = Ref(pickup); FallStartedAt = now; GauntletState.Spawned(SkyDrop);
+            MoveGauntlet(pickup,location);
+            Broadcast(SkyDrop ? "The Infinity Gauntlet is falling into the arena!" : "Thanos dropped the Infinity Gauntlet. Pick it up!");
+            LOG_INFO(LogDev,"Infinity Showdown: gauntlet spawned at {}, {}, {} (sky {}).",location.X,location.Y,location.Z,SkyDrop);
+        }
+        if (GauntletState.phase == InfinityRules::GauntletPhase::Held || GauntletState.phase == InfinityRules::GauntletPhase::Waiting) return;
+        auto pickup = Cast<AFortPickup>(WorldGauntlet.Get());
+        if (!pickup || pickup->IsActorBeingDestroyed()) { QueueGauntlet(GauntletLanding,now); return; }
+        if (GauntletState.phase == InfinityRules::GauntletPhase::Falling) {
+            const double progress = (std::min)(1.0,(std::max)(0.0,(now-FallStartedAt)/InfinityRules::GauntletFallTime));
+            auto location = GauntletLanding; location.Z += InfinityRules::GauntletHeight * float(1-progress*progress);
+            MoveGauntlet(pickup,location);
+            if (progress >= 1) { GauntletState.Landed(); Broadcast("The Infinity Gauntlet has landed. First to pick it up becomes Thanos!"); }
+        }
+    }
+    bool HandlePickup(AFortPlayerPawn* pawn, AFortPickup* pickup) {
+        if (!Enabled.load() || !pickup || !pickup->IsValidLowLevel()) return false;
+        if (pickup->GetPrimaryPickupItemEntry()->GetItemDefinition() != Gauntlet()) return false;
+        // All gauntlet RPCs are handled here, including duplicate and remote requests.
+        if (Faulted || !pawn || !pawn->IsValidLowLevel() || pawn->IsActorBeingDestroyed() || pawn->GetHealth() <= 0 || pawn->IsDBNO()) return true;
+        auto controller = Cast<AFortPlayerControllerAthena>(pawn->GetController());
+        auto found = Players.find(Identity(controller));
+        if (found == Players.end() || !found->second.connected || found->second.lives.pending || found->second.lives.eliminated) return true;
+        auto state = Cast<AFortPlayerStateAthena>(controller->GetPlayerState());
+        if (!state || state->IsInAircraft() || !OnGround(pawn) || pickup != WorldGauntlet.Get() || !Thanos.empty() || pawn->GetDistanceTo(pickup) > 350.f) return true;
+        auto inventory = controller->GetWorldInventory(); auto gauntlet = Gauntlet();
+        if (!inventory || !Addresses::ApplyGadgetData || !Addresses::RemoveGadgetData || !Globals::bEnableAGIDs) return true;
+        auto& player = found->second;
+        if (!SaveAppearance(controller,player) || !GauntletState.Claim()) return true;
+        player.equipment = SaveEquipment(inventory); player.restore = true;
+        RemoveInventory(inventory);
+        Assigning = controller; AssigningDefinition = gauntlet; AssignmentSucceeded = false;
+        inventory->AddItem(gauntlet,nullptr,1); inventory->Update(); Assigning = nullptr; AssigningDefinition = nullptr;
+        auto transformed = controller->GetMyFortPawn();
+        if (!AssignmentSucceeded || !inventory->FindItemInstance(gauntlet) || !transformed) {
+            RestoreEquipment(controller,player); Faulted = true;
+            Broadcast("Infinity Showdown: transformation failed. Stop this session; see the server log."); return true;
+        }
+        player.transformed = true; Thanos = found->first;
+        transformed->SetMaxHealth(InfinityRules::ThanosHealth); transformed->SetHealth(InfinityRules::ThanosHealth);
+        transformed->SetMaxShield(InfinityRules::ThanosShield);
+        if (!LocalTools::RestoreShield(transformed,InfinityRules::ThanosShield,true)) {
+            Faulted = true; Broadcast("Infinity Showdown: Thanos shield could not be set. Stop this session."); return true;
+        }
+        transformed->ForceNetUpdate(); pickup->K2_DestroyActor(); WorldGauntlet = {};
+        LOG_INFO(LogDev,"Infinity Showdown: {} picked up gauntlet, health {}, shield {}.",Thanos,transformed->GetHealth(),transformed->GetShield());
+        Broadcast("Infinity Showdown: " + Thanos + " is Thanos! 500 health / 200 shield."); return true;
+    }
     static bool Respawn(AFortPlayerControllerAthena* controller, Player& player, double now) {
         auto mode = Cast<AFortGameModeAthena>(GetWorld()->GetGameMode());
         auto state = Cast<AFortPlayerStateAthena>(controller->GetPlayerState());
@@ -411,8 +520,9 @@ namespace InfinityShowdown {
         auto skydive = FindObject<UFunction>(L"/Script/FortniteGame.FortPlayerPawn.BeginSkydiving");
         if (!mode || !state || !spawn || !skydive || !controller->GetWorldInventory()) return false;
         auto old = Ref(controller->GetMyFortPawn());
-        // Remove Thanos abilities before spawning a normal pawn; never drop the gauntlet.
+        // The world gauntlet is separate; remove abilities before spawning a normal pawn.
         if (!RestoreEquipment(controller, player)) return false;
+        if (!AddKit(controller, false)) return false;
         if (!RestoreAppearance(controller, player, false)) return false;
         auto location = ArenaCenter(mode, player.location);
         std::uniform_real_distribution<float> angle(0.f, 6.2831853f);
@@ -448,7 +558,7 @@ namespace InfinityShowdown {
         auto result = player.lives.Die((uint64_t(uint32_t(life.serial)) << 32) | uint32_t(life.index));
         if (result == InfinityRules::Lives::Duplicate) return true;
         player.location = pawn->GetActorLocation();
-        if (Thanos == found->first) { PreviousThanos = Thanos; Thanos.clear(); player.restore = true; }
+        if (Thanos == found->first) { player.restore = true; QueueGauntlet(player.location,game->GetServerWorldTimeSeconds()); }
         if (result == InfinityRules::Lives::Eliminate) {
             // Remove the gadget before native final elimination; inventory dropping is disabled for this mode.
             RestoreEquipment(Cast<AFortPlayerControllerAthena>(controller), player);
@@ -462,7 +572,8 @@ namespace InfinityShowdown {
         if (!Enabled.load() || !driver || !Globals::bStartedListening) return;
         auto world = GetWorld();
         if (World.Get() != world || Driver.Get() != driver) {
-            World = Ref(world); Driver = Ref(driver); Players.clear(); Thanos.clear(); PreviousThanos.clear(); Faulted = false; NextTick = NextSelection = 0;
+            World = Ref(world); Driver = Ref(driver); Players.clear(); Thanos.clear(); Faulted = false; NextTick = 0;
+            GauntletState = {}; WorldGauntlet = {}; SkyDrop = true;
             BusStarted = BusConfigured = BusExited = false; Buses.clear(); BusStartedAt = 0;
         }
         auto game = Cast<AFortGameStateAthena>(world->GetGameState());
@@ -485,12 +596,18 @@ namespace InfinityShowdown {
         if (game->GetGamePhase() == EAthenaGamePhase::SafeZones && ZoneState.stage < 2 && mode->GetSafeZoneIndicator())
             SetZoneToIndexHook(mode, 0);
         HoldZone(mode);
-        std::vector<std::string> eligible;
+        if (BusExited && FixedArena.radius > 0 && GauntletState.due < 0) {
+            QueueGauntlet(FixedCenter,now,true);
+            Broadcast("Infinity Gauntlet incoming in 20 seconds. Watch the sky above the arena!");
+        }
         for (auto& pair : Players) {
             auto& player = pair.second; auto controller = Cast<AFortPlayerControllerAthena>(player.controller.Get());
             if (!player.connected || !controller) {
                 if (game->GetGamePhase() >= EAthenaGamePhase::Aircraft) player.lives.Disconnect();
-                if (Thanos == pair.first) { PreviousThanos = Thanos; Thanos.clear(); }
+                if (Thanos == pair.first) {
+                    if (controller) RestoreEquipment(controller,player);
+                    QueueGauntlet(player.location,now);
+                }
                 continue;
             }
             if (player.lives.eliminated) {
@@ -507,41 +624,24 @@ namespace InfinityShowdown {
             auto pawn = controller->GetMyFortPawn(); auto state = Cast<AFortPlayerStateAthena>(controller->GetPlayerState());
             if (!pawn || !pawn->IsValidLowLevel() || pawn->IsActorBeingDestroyed() || pawn->GetHealth() <= 0 || pawn->IsDBNO() || !state || state->IsInAircraft()) continue;
             if (game->GetGamePhase() < EAthenaGamePhase::Aircraft) continue;
+            player.location = pawn->GetActorLocation();
+            if (player.transformed) {
+                // Native Carmine effects may restore its original cap after a kill.
+                // Cap excess values without healing damage the player has taken.
+                pawn->SetMaxHealth(InfinityRules::ThanosHealth); pawn->SetMaxShield(InfinityRules::ThanosShield);
+                if (pawn->GetHealth() > InfinityRules::ThanosHealth) pawn->SetHealth(InfinityRules::ThanosHealth);
+                if (pawn->GetShield() > InfinityRules::ThanosShield) LocalTools::RestoreShield(pawn,InfinityRules::ThanosShield,true);
+                continue;
+            }
             if (!SaveAppearance(controller, player)) {
                 Faulted = true; Broadcast("Infinity Showdown could not save the original appearance. Stop and select Classic."); return;
             }
             if (!player.kit) {
                 if (!AddKit(controller)) { Faulted = true; Broadcast("Infinity Showdown could not find the starter weapons. Stop this session and use Classic."); return; }
                 player.kit = true; LocalTools::RestoreHealth(pawn);
-                Tell(controller,"Infinity Showdown: 10 respawns, retained loot, random Thanos. Check F8 for status messages.");
+                Tell(controller,"Infinity Showdown: 10 respawns, sniper kit and full refill on respawn. Find the falling Gauntlet!");
             }
-            const Ref life(pawn);
-            const auto token = (uint64_t(uint32_t(life.serial)) << 32) | uint32_t(life.index);
-            const bool firstLanding = player.landing.pawn != token || player.landing.landedAt < 0;
-            if (player.landing.Ready(token, OnGround(pawn), now)) eligible.push_back(pair.first);
-            if (firstLanding && player.landing.landedAt >= 0) Tell(controller, "Landed. You become eligible for Thanos in 20 seconds.");
         }
-        if (!Thanos.empty() || eligible.empty() || now < NextSelection) return;
-        NextSelection = now + 2;
-        size_t contenders = 0;
-        for (const auto& pair : Players) if (pair.second.connected && !pair.second.lives.eliminated) ++contenders;
-        auto selected = InfinityRules::Choose(eligible, PreviousThanos, Random, contenders == 1); if (selected.empty()) return;
-        auto& player = Players.at(selected); auto controller = Cast<AFortPlayerControllerAthena>(player.controller.Get());
-        auto inventory = controller ? controller->GetWorldInventory() : nullptr; auto gauntlet = Gauntlet();
-        if (!inventory || !gauntlet || !Addresses::ApplyGadgetData || !Addresses::RemoveGadgetData || !Globals::bEnableAGIDs) {
-            Faulted = true; Broadcast("Infinity Showdown: this build cannot apply the Thanos gadget. Stop and select Classic."); return;
-        }
-        player.equipment = SaveEquipment(inventory); player.restore = true;
-        RemoveInventory(inventory);
-        Assigning = controller; AssigningDefinition = gauntlet; AssignmentSucceeded = false;
-        inventory->AddItem(gauntlet,nullptr,1); inventory->Update(); Assigning = nullptr; AssigningDefinition = nullptr;
-        if (!AssignmentSucceeded || !inventory->FindItemInstance(gauntlet)) {
-            const bool restored = RestoreEquipment(controller,player); Faulted = true;
-            Broadcast(restored ? "Infinity Showdown: Thanos transformation failed. Equipment restored; restart with Classic."
-                : "Infinity Showdown: transformation and equipment restore failed. Stop this session; see the server log."); return;
-        }
-        player.transformed = true; Thanos = selected;
-        controller->GetMyFortPawn()->ForceNetUpdate();
-        Broadcast("Infinity Showdown: " + selected + " is Thanos! Each player has up to 10 respawns.");
+        TickGauntlet(now);
     }
 }

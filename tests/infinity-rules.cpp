@@ -4,14 +4,17 @@
 #include <set>
 int main() {
     using namespace InfinityRules;
-    Landing landing;
-    assert(!landing.Ready(1, false, 100)); // Skydiving must not start the timer.
-    assert(!landing.Ready(1, true, 140));
-    assert(!landing.Ready(1, true, 159.99));
-    assert(!landing.Ready(1, false, 160)); // No midair transformation after a jump.
-    assert(landing.Ready(1, true, 161)); // Jumping does not reset the first landing.
-    assert(!landing.Ready(2, true, 180)); // New pawn/life gets a fresh delay.
-    assert(landing.Ready(2, true, 200));
+    GauntletCycle gauntlet;
+    assert(!gauntlet.Due(100) && !gauntlet.Claim());
+    gauntlet.Schedule(100,GauntletDelay);
+    assert(!gauntlet.Due(119.99) && gauntlet.Due(120));
+    gauntlet.Spawned(true);
+    assert(!gauntlet.Due(999) && !gauntlet.Claim()); // Can't take it while falling or spawn a second one.
+    gauntlet.Landed(); assert(gauntlet.Claim());
+    assert(!gauntlet.Claim()); // A second simultaneous pickup cannot create another Thanos.
+    gauntlet.Landed(); assert(gauntlet.phase == GauntletPhase::Held);
+    gauntlet.Schedule(130,0); assert(gauntlet.Due(130)); // Death/disconnect drops immediately.
+    gauntlet.Spawned(false); assert(gauntlet.Claim()); // The former holder can compete for it too.
     assert(BusSpeed > 0 && BusDropStart < BusDropEnd && BusDropEnd < BusFlightEnd);
     assert((BusDropEnd - BusDropStart) * BusSpeed < ArenaRadius * 2);
     assert(!CanLeaveBus(false, true, true, 5));
@@ -52,14 +55,5 @@ int main() {
     assert(a.Die(110)==Lives::Duplicate && a.remaining==0);
     assert(b.Die(200)==Lives::Respawn && b.remaining==9);
     b.Disconnect(); assert(b.eliminated && !b.pending && b.remaining==9);
-    std::mt19937 random(42); std::set<std::string> selected;
-    for(int i=0;i<1000;++i) {auto chosen=Choose({"a","b","c"},"b",random);assert(chosen!="b" && !chosen.empty()); selected.insert(chosen);}
-    assert(selected==std::set<std::string>({"a","c"}));
-    assert(Choose({},"",random).empty());
-    assert(Choose({"a"},"a",random).empty());
-    assert(Choose({"a"},"a",random,true)=="a");
-    assert(Choose({"a","b"},"a",random,true)=="b");
-    assert(Choose({},"a",random,true).empty());
-    assert(Choose({"a"},"",random)=="a");
-    std::cout << "PASS: landing delay, airborne exclusion, new-life delay, bus timing, 10 respawns, independent budgets, duplicate deaths, failed-spawn retries, disconnect forfeits and random role rotation.\n";
+    std::cout << "PASS: gauntlet landing/claim exclusivity, death/disconnect re-drop, bus timing, arena lifecycle, 10 respawns and duplicate-death protection.\n";
 }

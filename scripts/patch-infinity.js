@@ -23,6 +23,18 @@ export function patchInfinity(root) {
     ['if (GadgetItemDefinition->ShouldDropAllItemsOnEquip())','if (GadgetItemDefinition->ShouldDropAllItemsOnEquip() && !InfinityShowdown::Enabled.load())'],
     ['LOG_INFO(LogDev, "DidApplyingGadgetSucceed: {}", DidApplyingGadgetSucceed);','InfinityShowdown::GadgetApplied(FortPlayerController, ItemDefinition, DidApplyingGadgetSucceed);\n\t\t\t\t\tLOG_INFO(LogDev, "DidApplyingGadgetSucceed: {}", DidApplyingGadgetSucceed);']
   ]);
+  edit('FortPlayerPawn.cpp', [
+    ['#include "FortPlayerPawn.h"', '#include "FortPlayerPawn.h"\n#include "InfinityShowdown.h"'],
+    ['void AFortPlayerPawn::ServerHandlePickupHook(AFortPlayerPawn* Pawn, AFortPickup* Pickup, float InFlyTime, FVector InStartDirection, bool bPlayPickupSound)\n{',
+     'void AFortPlayerPawn::ServerHandlePickupHook(AFortPlayerPawn* Pawn, AFortPickup* Pickup, float InFlyTime, FVector InStartDirection, bool bPlayPickupSound)\n{\n\tif (InfinityShowdown::HandlePickup(Pawn, Pickup)) return;'],
+    ['auto Pickup = *(AFortPickup**)(__int64(Params) + PickupOffset);',
+     'auto Pickup = *(AFortPickup**)(__int64(Params) + PickupOffset);\n\tif (InfinityShowdown::HandlePickup(Pawn, Pickup)) return;']
+  ]);
+  edit('FortPickup.cpp', [
+    ['#include "FortPickup.h"', '#include "FortPickup.h"\n#include "InfinityShowdown.h"'],
+    ['auto Pawn = Cast<AFortPlayerPawn>(Pickup->GetPickupLocationData()->GetPickupTarget());',
+     'auto Pawn = Cast<AFortPlayerPawn>(Pickup->GetPickupLocationData()->GetPickupTarget());\n\tif (InfinityShowdown::HandlePickup(Pawn, Pickup)) return 0;']
+  ]);
   edit('FortPlayerController.cpp', [
     ['#include "LocalTools.h"','#include "LocalTools.h"\n#include "InfinityShowdown.h"'],
     ['\tif (Engine_Version < 424 && !Globals::bLateGame.load())',
@@ -75,4 +87,6 @@ export function patchInfinity(root) {
 ${before}`);
     fs.writeFileSync(gui, source);
   }
+  source = fs.readFileSync(gui, 'utf8').replace('Infinity Showdown: random Thanos, 10 respawns, retained loot.', 'Infinity Showdown: falling Gauntlet, 500 HP / 200 shield, sniper kit, full respawn refill.');
+  fs.writeFileSync(gui, source);
 }

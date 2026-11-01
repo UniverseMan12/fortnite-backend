@@ -8,6 +8,7 @@
 #include "GameModeBase.h"
 #include "KismetStringLibrary.h"
 #include <chrono>
+#include <cmath>
 
 namespace LocalTools {
     static int DeadControllerIndex = -1;
@@ -51,10 +52,10 @@ namespace LocalTools {
         SpawnedLootCount.store(static_cast<int>(SpawnedLoot.size()));
         return true;
     }
-    static bool RestoreShield(AFortPawn* pawn) {
-        if (pawn->GetShield() >= 100) return true;
+    static bool RestoreShield(AFortPawn* pawn, float target = 100.f, bool exact = false) {
+        if (!exact && pawn->GetShield() >= target) return true;
         if (auto setter = pawn->FindFunction("SetShield")) {
-            float shield = 100; pawn->ProcessEvent(setter, &shield);
+            float shield = target; pawn->ProcessEvent(setter, &shield);
         } else {
             // 4.2 has GetShield/SetMaxShield but no SetShield UFunction.
             // Use its reflected health attribute set and replication notification.
@@ -69,13 +70,13 @@ namespace LocalTools {
                 auto currentOffset = attribute->GetOffset("CurrentShield", false);
                 if (currentOffset == -1) continue;
                 auto shield = attribute->GetPtr<FGameplayAttributeData>(currentOffset);
-                shield->GetBaseValue() = 100; shield->GetCurrentValue() = 100;
+                shield->GetBaseValue() = target; shield->GetCurrentValue() = target;
                 if (auto notify = attribute->FindFunction("OnRep_CurrentShield")) attribute->ProcessEvent(notify);
                 break;
             }
         }
         pawn->ForceNetUpdate();
-        return pawn->GetShield() >= 99.9f;
+        return std::abs(pawn->GetShield() - target) < .1f;
     }
     static bool RestoreHealth(AFortPawn* pawn) {
         if (pawn->GetHealth() < 100) pawn->SetHealth(100);
