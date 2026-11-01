@@ -1,37 +1,34 @@
 # Infinity Showdown (experimental)
 
-A private Fortnite 4.2 late-game mode with a randomly assigned Thanos role. This is custom server logic, not a playlist name alone.
+A private Fortnite 4.2 arena mode where players fight over one Infinity Gauntlet. The host controls the rules; this is separate from ordinary full-island Thanos mode.
 
 ## Play
 
-1. The host selects **Infinity Showdown** in the launcher, chooses their Fortnite folder and launches.
-2. In Reboot, select **Infinity Showdown**, then **Start server**. It has its own button beside **Solo** and **Thanos (experimental)**. The mode uses the Carmine playlist for Thanos' ability HUD, with Solo gameplay rules, automatic supply drops disabled, gadget support and custom late-game rules.
-3. Friends choose **Join** and enter the host's VPN/LAN IP. The host controls the rules.
-4. Everyone presses Play to enter the island. Once everyone is connected, the host clicks **Start Bus** in Reboot.
-5. The bus flies across the arena with a 16-second jump window. Land first: you become eligible for random Thanos selection **20 seconds after touching the ground**. Selection only transforms a currently grounded player. No gauntlet drops from the sky.
+1. The host selects **Host friends → Infinity Showdown** in the launcher. Reboot opens with the mode preselected; click **Start server**.
+2. Friends select **Join friend** and paste the host's invitation or Hamachi/LAN IPv4. Everyone must be on the same LAN or private VPN. The invitation contains an address, not a VPN tunnel.
+3. Once Reboot's **Game** tab shows **Joinable true**, everyone can press **Play** in Fortnite in any order. The host does not have to reach the island first.
+4. Start **Bus Countdown** only after everyone has joined the island.
+5. After the bus jump window ends, a 20-second countdown begins. The original 4.2 Carmine Gauntlet meteor is spawned with its landing point inside the arena. Pick up the Gauntlet after impact to become Thanos; the role is no longer assigned randomly.
 
 ## Rules
 
-- Each player starts with one life and **10 additional respawns**. The eleventh death eliminates them normally. Duplicate death callbacks do not spend extra lives, and a failed pawn spawn retries without spending another life.
-- Respawns take three seconds and place you **200 metres above the terrain** near the arena center, skydiving back into the safe zone. The new pawn gets three seconds of damage protection.
-- Normal equipment stays in the inventory on death. Thanos's previous inventory is stored separately; after his death the gauntlet and its abilities are removed and the previous equipment is restored. No gauntlet pickup is created.
-- A different eligible live player is randomly selected as Thanos after the previous Thanos dies or disconnects. When everyone else is waiting to respawn, selection waits. When only one connected, non-eliminated player remains (including solo testing), that player can receive the role again after the new landing delay. Ordinary final-elimination/winner handling remains with the game server.
-- The starter kit contains a legendary SCAR, the available blue pump (fallback to the older pump if that definition is absent), six mini shields and three medkits. Wood, stone, metal and ammo start at 999. Consumables use their normal stack sizes. The kit is granted once, not refilled after each death.
-- The arena has a fixed radius **35% larger than the previous late-game circle**, with a minimum of 150 metres, around the fourth zone center. The storm is paused once instead of repeatedly starting a shrink. The bus moves immediately and is removed after its flight once everyone has exited.
-- Each respawn starts a fresh 20-second landing delay. Jumping does not reset an existing landing timer, but a player cannot become Thanos while airborne.
-- Practice respawn, healing and item-spawning tools are disabled in this mode. Classic retains its original tools.
-- Disconnecting forfeits that player's participation in the current session. Reconnecting under the same player identity does not reset the life budget. Stop/restart the server for a new round.
+- Thanos has **500 health and 200 shield**. Native Carmine effects cannot increase these caps. Damage below the caps is retained; the server does not continuously heal Thanos.
+- Thanos drops the Gauntlet on death, including the final elimination. It can be picked up by another player or by the former holder after respawning. Disconnecting also releases it. A drop outside the arena is moved back to a reachable point inside it.
+- Only one world Gauntlet or active Thanos is allowed. Pickup requests are checked on the server for the actual tracked Gauntlet, a living grounded player, distance, aircraft state and the player's remaining lives. Competing or duplicate pickup requests cannot create two holders.
+- Each player has one initial life and **10 additional respawns**. Respawning takes three seconds and places the player 200 metres above terrain near the arena centre, with 100 health, 100 shield and three seconds of damage protection. Duplicate death callbacks and failed spawn retries do not consume additional lives.
+- The five-slot starter kit is a **legendary SCAR, blue pump** (older pump fallback), **legendary bolt-action sniper, six minis and three medkits**. Resources and ammo are stocked to 999.
+- Equipment is retained on death. On each respawn, materials, reserve ammo, minis, medkits and all retained weapon magazines are refilled. Thanos's original inventory and normal appearance are restored before spawning a normal player.
+- The storm stays around the fixed arena. The radius is at least 150 metres, centred around the fourth native zone. Bus timing, appearance restoration and the fixed storm lifecycle remain in place.
+- Disconnecting does not reset the ten-respawn budget. Stop and restart the server to begin a new round.
 
-## Compatibility and testing limits
+## Connection troubleshooting
 
-The pinned DLL is built from `bda98ce772651b219476e04e934d9397effe9fe1`. [Native build 41255821532](https://github.com/UniverseMan12/fortnite-4-2-launcher/actions/runs/41255821532) passed compilation and the engine-independent rules tests, including solo reassignment, multiplayer preference and guarded bus exit. The downloaded archive matches GitHub's SHA-256 digest; the DLL matches the included `reboot.sha256` and the dependency manifest.
+Use the **host's** VPN address for Join friend. The host's firewall needs an inbound exception for its actual `FortniteClient-Win64-Shipping.exe`, **UDP 7777**, on the VPN adapter's active network profile. Prefer a rule scoped to the friend addresses and that adapter. The launcher does not disable the firewall or configure a VPN.
 
-Earlier manual Fortnite 4.2 testing confirmed bus departure, the larger visible storm wall, Thanos ability icons, survival of Thanos death without a server crash, normal inventory restoration and airborne respawn. A November 1 solo test with the earlier `7fa0949` DLL confirmed the normal skin after Thanos death, airborne respawn with 100 health/100 shield and restored equipment, and successful reassignment to the same player after landing. It also exposed stretched proportions and the bus-start timing problem described below. The 20-second threshold and airborne exclusion are covered by native rules tests; the manual test was not a frame-accurate timing measurement. A real two-PC VPN match and multiplayer role rotation remain unverified in game.
+On November 1, 2026, the owner confirmed a successful two-PC Hamachi join after a scoped host firewall exception was added. The friend joining before the host is supported; this does not establish that joining order caused the earlier failure.
 
-The fixed storm timestamps are held approximately 24 hours ahead. With the pinned DLL, the tester confirmed the storm wall before and after leaving the bus. Read-only server diagnostics after the transition confirmed a fixed 150-metre radius, active zone, paused progression and unpaused indicator rendering. The HUD can show approximately 1439 minutes; the timer is not hidden or polished.
+## Validation limits
 
-The pinned DLL saves the original six character-part slots, body type, gender and animation override before transformation, restores PlayerState before spawning, and refreshes the newly possessed pawn. The tester confirmed normal proportions with `92773e4` after Thanos death. That intermediate build survived bus startup but showed only the minimap circle, without the storm wall; the pinned `bda98ce` build fixes that subsequent regression.
+The Gauntlet redesign is under validation on `codex/showdown-gauntlet`. The first candidate's transformation was confirmed in-game, but its simulated pickup descent lacked the original meteor effects and the pickup model remained after use. The revised candidate uses the game's own meteor blueprint and replicates the consumed pickup state before destroying it. Falling visuals, impact audio and pickup disappearance still need in-game confirmation. No extracted game assets are distributed with the launcher. Native state tests cover pickup exclusivity, falling versus available states, re-dropping, bus timing, arena lifecycle and the respawn budget. See [RELEASE_QA.md](RELEASE_QA.md) for build and game-test results.
 
-The pinned DLL uses Fortnite's native `StartsWithAirCraft` setting to initialize the arena during departure and gates the native jump RPC on arena readiness, the drop-start time and actual aircraft membership. Forced end-of-route ejection remains allowed. A crashing intermediate build that called the phase routine before the zone indicator existed is excluded from publication. The zone lifecycle repair completes initialization once after the bus, preserves the original fixed radius and center, and repairs overwritten zone fields without repeatedly restarting the storm. The final solo test confirmed both initialization stages and the visible wall through the transition. Countdown boundaries are covered by native assertions; repeated early input was not separately measured in the manual test. See [RELEASE_QA.md](RELEASE_QA.md) for actual observations.
-
-If the game cannot load the Thanos gadget, apply its abilities, or find the starter weapons, the mode reports a failure in Reboot and the affected player's F8 console. Stop the session and select Classic. This experimental mode does not silently claim a successful transformation when the game's gadget hook reports failure.
+The older fixed storm can still display an approximately 1439-minute cosmetic timer. A complete match with the redesigned Gauntlet must be tested separately from the successful multiplayer connection test. Server-side status messages are available in Reboot and the F8 console.

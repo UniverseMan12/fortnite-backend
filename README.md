@@ -16,7 +16,7 @@ The built-in download targets **4.2 / CL-4072250** only. It does not install or 
 
 - **Classic:** the normal island and practice tools.
 - **Thanos:** the ordinary Infinity Gauntlet playlist on the full island, with its own Fortnite × Avengers artwork. No fixed Showdown arena or additional Showdown respawns.
-- **Infinity Showdown:** a compact fixed arena, randomly assigned Thanos, retained equipment and ten extra respawns.
+- **Infinity Showdown:** a compact fixed arena, a contested falling Gauntlet, Thanos with 500 health / 200 shield, a sniper starter kit and ten extra respawns with full supplies.
 
 The selected mode is preselected in Reboot; click **Start server**, then **Play** in Fortnite. Friends joining your session use the host's rules.
 

@@ -1,5 +1,14 @@
 # Desktop release checks
 
+## Unreleased — Gauntlet redesign candidate
+
+- The owner confirmed two-PC Hamachi joining after a narrowly scoped host firewall exception. The invitation still requires an existing LAN/VPN connection; no relay service was added.
+- Candidate `ab8f455` compiled and passed native rules tests. The owner confirmed transformation, but reported no meteor animation/impact sound and a pickup model remaining after use. That candidate is not release-ready.
+- Revision `fad9dd7` replaces the simulated pickup descent with the existing Fortnite 4.2 Carmine meteor blueprint and replicates the consumed pickup state before delayed destruction. Its landing callback supplies one tracked collectible; duplicate loot callbacks are suppressed. Ordinary Thanos and Classic keep their existing supply-drop handling.
+- After correcting SDK type errors, [native build 41321386196](https://github.com/UniverseMan12/fortnite-4-2-launcher/actions/runs/41321386196) passed compilation and rules tests at `d396aa5a40b193b60b464e7a160264a109b27514`. Artifact `13088923237` matched GitHub's archive SHA-256 `b593a286fd6053399a18c8171f89829f5c3a8be083c7a4a881a77c332014d14b`; the DLL matched its bundled checksum `3f4ab5250bf4539657f2e8de014949939f2e353b1c1e82dd0f03d7656e01c03e` before pinning.
+- **45 Node tests and 13 desktop tests passed** on November 1, 2026. Native patches applied successfully twice to the pinned upstream test checkout. These checks do not validate rendered meteor effects or pickup disappearance.
+- In-game confirmation of the revised meteor, impact sound, pickup disappearance, 500/200 Thanos stats and death/respawn refill is still pending. Alpha.5 version preparation is local; no new GitHub release has been published.
+
 ## 0.4.0-alpha.4 — download directly from Play (prerelease)
 
 - The owner's public Google Drive archive was retrieved without signing in: `4.20-CL-4072250.7z`, **8,946,548,760 bytes**, SHA-256 `d89a92ed1e4038627aa8bf0c0985c7eb16eab033a194c0f66c38f90285c8de4c`. The manifest selects **24,091,769,351 bytes** of game content; extra Epic launcher/redistributable folders are excluded.
