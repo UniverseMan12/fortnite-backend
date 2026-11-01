@@ -23,6 +23,18 @@ int main() {
     assert(CanLeaveBus(true, true, true, BusDropEnd));
     assert(CanLeaveBus(true, true, true, BusFlightEnd)); // Forced native ejection.
     assert(!CanLeaveBus(true, true, true, NAN));
+    ZoneLifecycle zone;
+    assert(!zone.Initialize(false, false)); // Never advance without an indicator.
+    assert(zone.Initialize(false, true)); // Aircraft preview.
+    assert(!zone.Initialize(false, true)); // No repeated storm alerts.
+    assert(!zone.Initialize(true, false));
+    assert(zone.Initialize(true, true)); // Complete initialization after the bus.
+    assert(!zone.Initialize(true, true));
+    assert(!zone.Initialize(false, true)); // Do not return to preview.
+    FixedArena arena;
+    assert(arena.Capture(10000) == 15000);
+    assert(arena.Capture(15000) == 15000); // Repairs must not grow the arena.
+    assert(arena.Capture(80000) == 15000); // Native post-bus reset is ignored.
     assert(LargerArena(20000) == 27000);
     assert(LargerArena(8000) == 15000);
     assert(LargerArena(-1) == 15000);

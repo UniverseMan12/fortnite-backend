@@ -21,6 +21,21 @@ namespace InfinityRules {
         // Native end-of-route ejection must still work after the drop window.
         return configured && arenaReady && inAircraft && std::isfinite(elapsed) && elapsed >= BusDropStart;
     }
+    struct ZoneLifecycle {
+        int stage = 0;
+        bool Initialize(bool afterAircraft, bool indicatorReady) {
+            const int requested = afterAircraft ? 2 : 1;
+            if (!indicatorReady || stage >= requested) return false;
+            stage = requested; return true;
+        }
+    };
+    struct FixedArena {
+        float radius = 0;
+        float Capture(float nativeRadius) {
+            if (radius == 0) radius = LargerArena(nativeRadius);
+            return radius;
+        }
+    };
     struct Landing {
         uint64_t pawn = 0;
         double landedAt = -1;

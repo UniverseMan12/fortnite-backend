@@ -5,6 +5,8 @@
 #include <random>
 #include <cmath>
 
+void SetZoneToIndexHook(AFortGameModeAthena* mode, int phase);
+
 namespace InfinityShowdown {
     using Ref = LocalTools::TrackedObject;
     struct SavedItem { Ref definition; int count = 0, ammo = -1; std::string path; };
@@ -29,7 +31,12 @@ namespace InfinityShowdown {
     static std::unordered_map<std::string, Player> Players;
     static Ref World, Driver;
     static Ref ZoneWorld, HeldZone;
-    static bool ZoneStarted = false, BusStarted = false, BusConfigured = false, BusExited = false;
+    static InfinityRules::ZoneLifecycle ZoneState;
+    static InfinityRules::FixedArena FixedArena;
+    static FVector FixedCenter;
+    static float ArenaHoldUntil = 0;
+    static int HeldGamePhase = -1;
+    static bool BusStarted = false, BusConfigured = false, BusExited = false;
     static double BusStartedAt = 0;
     static std::vector<Ref> Buses;
     static std::string Thanos, PreviousThanos;
@@ -231,34 +238,65 @@ namespace InfinityShowdown {
         LOG_INFO(LogDev, "Infinity Showdown: Carmine HUD enabled; automatic supply drops disabled.");
     }
     bool BeginZone(AFortGameModeAthena* mode) {
-        if (ZoneWorld.Get() != GetWorld()) { ZoneWorld = Ref(GetWorld()); ZoneStarted = false; HeldZone = {}; }
-        if (ZoneStarted || !mode || !mode->GetSafeZoneIndicator()) return false;
-        ZoneStarted = true;
+        if (ZoneWorld.Get() != GetWorld()) {
+            ZoneWorld = Ref(GetWorld()); ZoneState = {}; FixedArena = {}; HeldZone = {}; HeldGamePhase = -1; ArenaHoldUntil = 0;
+        }
+        if (!mode) return false;
+        auto game = Cast<AFortGameStateAthena>(mode->GetGameState());
+        if (!game || game->GetGamePhase() < EAthenaGamePhase::Aircraft) return false;
+        if (!ZoneState.Initialize(game->GetGamePhase() >= EAthenaGamePhase::SafeZones, mode->GetSafeZoneIndicator() != nullptr)) return false;
         Put(mode, "SafeZonePhase", 3);
         Put(mode->GetGameState(), "SafeZonePhase", uint8_t(3));
+        LOG_INFO(LogDev, "Infinity Showdown: native zone initialization stage {}.", ZoneState.stage);
         return true;
     }
     void HoldZone(AFortGameModeAthena* mode) {
-        if (!ZoneStarted || !mode) return;
-        auto zone = mode->GetSafeZoneIndicator(); if (!zone || HeldZone.Get() == zone) return;
+        if (ZoneWorld.Get() != GetWorld() || ZoneState.stage == 0 || !mode) return;
+        auto zone = mode->GetSafeZoneIndicator(); if (!zone) return;
         auto game = Cast<AFortGameStateAthena>(mode->GetGameState()); if (!game) return;
-        const auto center = ArenaCenter(mode, zone->GetActorLocation());
-        const int radiusOffset = zone->GetOffset("NextRadius",false);
-        const float radius = InfinityRules::LargerArena(radiusOffset >= 0 ? zone->Get<float>(radiusOffset) : 0.f);
+        if (FixedArena.radius == 0) {
+            FixedCenter = ArenaCenter(mode, zone->GetActorLocation());
+            const int radiusOffset = zone->GetOffset("NextRadius",false);
+            FixedArena.Capture(radiusOffset >= 0 ? zone->Get<float>(radiusOffset) : 0.f);
+            ArenaHoldUntil = game->GetServerWorldTimeSeconds() + 86400.f;
+        }
+        const auto center = FixedCenter; const float radius = FixedArena.radius, end = ArenaHoldUntil;
+        // 4.2 writes zone defaults again when leaving Aircraft, even when it
+        // reuses the same indicator. Repair drift without multiplying the
+        // radius again or restarting the native phase on every tick.
+        bool changed = HeldZone.Get() != zone || HeldGamePhase != int(game->GetGamePhase());
+        const auto differs = [](float actual, float expected) { return !std::isfinite(actual) || std::fabs(actual - expected) > 1.f; };
+        for (auto name : {"LastRadius", "NextRadius", "NextNextRadius", "Radius"}) {
+            const int offset = zone->GetOffset(name, false);
+            if (offset >= 0 && differs(zone->Get<float>(offset), radius)) changed = true;
+        }
+        for (auto name : {"SafeZoneStartShrinkTime", "SafeZoneFinishShrinkTime"}) {
+            const int offset = zone->GetOffset(name, false);
+            if (offset >= 0 && differs(zone->Get<float>(offset), end)) changed = true;
+        }
+        for (auto name : {"LastCenter", "NextCenter", "NextNextCenter"}) {
+            const int offset = zone->GetOffset(name, false);
+            if (offset >= 0) { const auto& actual = zone->Get<FVector>(offset);
+                if (differs(actual.X,center.X) || differs(actual.Y,center.Y) || differs(actual.Z,center.Z)) changed = true;
+            }
+        }
+        const int paused = zone->GetOffset("bPaused", false), previewPaused = zone->GetOffset("bPausedForPreview", false), modePaused = mode->GetOffset("bSafeZonePaused", false);
+        if ((paused >= 0 && zone->Get<bool>(paused)) || (previewPaused >= 0 && zone->Get<bool>(previewPaused)) || (modePaused >= 0 && !mode->Get<bool>(modePaused))) changed = true;
+        if (!changed) return;
         for (auto name : {"LastCenter", "NextCenter", "NextNextCenter"}) Put(zone, name, center);
         for (auto name : {"LastRadius", "NextRadius", "NextNextRadius", "Radius"}) Put(zone, name, radius);
         // Freeze one holding phase. Never repeatedly restart a 0.2-second shrink.
-        const float end = game->GetServerWorldTimeSeconds() + 86400.f;
         Put(zone, "SafeZoneStartShrinkTime", end); Put(zone, "SafeZoneFinishShrinkTime", end);
         // The indicator must keep ticking on clients to update the storm mesh
         // and minimap. Pause progression on the game mode, not its rendering.
         Put(zone, "bPaused", false); Put(mode, "bSafeZonePaused", true);
+        Put(zone, "bPausedForPreview", false);
         Put(mode, "TimeRemainingWhenPhasePaused", 86400.f);
         if (auto fn = zone->FindFunction("SetSafeZoneRadiusAndCenter")) {
             struct { float radius; FVector center; } params{radius, center};
             zone->ProcessEvent(fn, &params);
         }
-        zone->ForceNetUpdate(); game->ForceNetUpdate(); HeldZone = Ref(zone);
+        zone->ForceNetUpdate(); game->ForceNetUpdate(); HeldZone = Ref(zone); HeldGamePhase = int(game->GetGamePhase());
         LOG_INFO(LogDev, "Infinity Showdown: fixed arena radius {} cm", radius);
     }
     static void TickBus(AFortGameModeAthena* mode, AFortGameStateAthena* game, double now) {
@@ -440,7 +478,13 @@ namespace InfinityShowdown {
             auto key = Identity(controller); if (key.empty()) continue;
             auto& player = Players[key]; player.controller = Ref(controller); player.connected = true;
         }
-        TickBus(mode, game, now); HoldZone(mode);
+        TickBus(mode, game, now);
+        // At this point the native indicator exists and the aircraft phase has
+        // ended. Complete native storm initialization once for real gameplay;
+        // the aircraft preview initialization alone is not sufficient in 4.2.
+        if (game->GetGamePhase() == EAthenaGamePhase::SafeZones && ZoneState.stage < 2 && mode->GetSafeZoneIndicator())
+            SetZoneToIndexHook(mode, 0);
+        HoldZone(mode);
         std::vector<std::string> eligible;
         for (auto& pair : Players) {
             auto& player = pair.second; auto controller = Cast<AFortPlayerControllerAthena>(player.controller.Get());
