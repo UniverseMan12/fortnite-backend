@@ -4,6 +4,7 @@ This build is awaiting owner gameplay validation. It has not been published as a
 
 - Infinity Showdown uses a contested Gauntlet instead of choosing Thanos randomly. The original Fortnite 4.2 Carmine meteor asset now starts 600 metres above the arena and uses its native projectile movement, effects and sounds. This revises a failed candidate whose trail remained near the ground; the corrected visual result still needs confirmation.
 - Thanos is configured for 500 health and 200 shield, and drops the Gauntlet on death or disconnect. Pickup consumption is replicated before the world actor is removed.
+- The pickup-fix candidate now intercepts Fortnite 4.2's legacy pickup-with-swap RPC as well, so this path uses the same Showdown transformation and consumption rules. It also blocks the separate gadget request that emptied the player's equipment before it could be saved. Owner validation of disappearance and 500/200 stats is pending.
 - The starter kit includes a legendary SCAR and bolt-action sniper, a blue pump, minis and medkits. Respawns refill ammunition, magazines, materials and healing supplies while retaining equipment.
 - Ten additional respawns, the fixed arena and restoration of the normal character after Thanos remain in place. Classic and ordinary full-island Thanos remain separate choices.
 - The owner confirmed successful Hamachi multiplayer after a scoped host firewall exception. Invitations still require a working LAN/VPN; the launcher does not provide a relay or automatically configure the firewall.

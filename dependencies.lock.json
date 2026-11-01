@@ -5,9 +5,9 @@
   },
   "launcherCommit": "c6f82298b167ef2076bb59dc621f13dc5bd8d390",
   "gameServerCommit": "10c659028ad9d6816f78226483f11a884bf81f57",
-  "gameServerBuildCommit": "bb631c4065959023826e6ff641ea6928c769c647",
-  "gameServerArchive": "https://nightly.link/UniverseMan12/fortnite-4-2-launcher/actions/artifacts/13089931204.zip",
-  "gameServerArchiveSha256": "472fd2fae6fa921efeafd70ad475c8feca9df90e217c1175e36fc3901163284a",
+  "gameServerBuildCommit": "e342fc686a7d50b1df60a9b87736d5f00f7f9559",
+  "gameServerArchive": "https://nightly.link/UniverseMan12/fortnite-4-2-launcher/actions/artifacts/13090548714.zip",
+  "gameServerArchiveSha256": "53d2fe3b46646feff9bbe11ac3f40947940656a4a0464ea1ed9138cf0b2522b0",
   "previousGameServerSha256s": [
     "8db85724388c33c5ca090cda8a0cc7c4a0be4247ced08498569ec5c359a85a8e",
     "3f97ac64bca54fa758e768df17e054cb3be0e303ae97eba32c636738ad01f21a",
@@ -25,12 +25,13 @@
     "5c898810f41344de82d5911c3249d2c84decbac4df6605b83ca305218328fa67",
     "7b825bfa081151b58db35414e835b9c92fa296e192f934dbe500fb099b1faf9a",
     "b54e535ba9b52362073413a88423edcd029e420349297d16f184c1f5f10c9538",
-    "3f4ab5250bf4539657f2e8de014949939f2e353b1c1e82dd0f03d7656e01c03e"
+    "3f4ab5250bf4539657f2e8de014949939f2e353b1c1e82dd0f03d7656e01c03e",
+    "7ee5998aa8b7b92ee958ca7b4dcd1d69b76caece041ea331486e5fccbb821a23"
   ],
   "dlls": {
     "sinum.dll": "fb69e9ee715f5cbbdadd0e8e3cb07ee37b9dc1ac41f8ea04ebee66e4f7026f72",
     "console.dll": "a4873bd206a1bbf05eea868d28f4850942fed8eb55a465ecc05604c5bc9c43c7",
     "memory.dll": "09678b68e73eeb4463e3b442e0982eba7ff08b07df0614b12a02ed4c9f17fb7a",
-    "reboot.dll": "7ee5998aa8b7b92ee958ca7b4dcd1d69b76caece041ea331486e5fccbb821a23"
+    "reboot.dll": "f812debdac939664b52ca38244c08169ca2a6825da744b7bb1b780a9d9ac66ab"
   }
 }
