@@ -16,6 +16,8 @@ test('desktop launch requests reject unsupported actions and missing paths', () 
   for (const value of [null, {}, { mode: 'shell', gamePath: 'C:/game' }, { mode: 'solo', gamePath: '' }]) assert.throws(() => validateOptions(value));
   assert.deepEqual(validateOptions({ mode: 'join', gamePath: ' C:/game ', host: ' 25.1.2.3 ', unexpected: true }), { mode: 'join', gamePath: 'C:/game', host: '25.1.2.3', gameMode: 'classic' });
   assert.equal(validateOptions({mode:'host',gamePath:'C:/game',gameMode:'infinity'}).gameMode,'infinity');
+  assert.equal(validateOptions({mode:'solo',gamePath:'C:/game',gameMode:'thanos'}).gameMode,'thanos');
+  assert.equal(normalizeSettings({gameMode:'thanos'}).gameMode,'thanos');
   assert.throws(()=>validateOptions({mode:'host',gamePath:'C:/game',gameMode:'anything'}),/Choose Classic/);
 });
 

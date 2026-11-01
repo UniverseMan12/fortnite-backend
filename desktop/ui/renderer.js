@@ -5,7 +5,7 @@ function saveSettings() {
 }
 const titles = { play: 'Back to the island.', setup: 'A little setup. Then play.', activity: 'Your session, step by step.' };
 const notes = {
-  solo: 'Play on your own. Choose a playlist and Start server in Reboot, then Play in Fortnite.',
+  solo: 'Play on your own. Your mode is preselected in Reboot. Click Start server, then Play in Fortnite.',
   host: 'Use the same LAN or VPN. Copy an invitation once hosting starts. When everyone is on the island, click Start Bus Countdown in Reboot.',
   join: 'Paste your friend’s invitation. You both need Fortnite 4.2 and the same LAN or VPN network.'
 };
@@ -28,21 +28,23 @@ function selectMode(value) {
   saveSettings();
 }
 function renderRules() {
-  const showdown = gameMode === 'infinity';
+  const showdown = gameMode === 'infinity', thanos = gameMode === 'thanos', local = mode !== 'join';
   document.querySelectorAll('[data-rules]').forEach(el => {
     const selected = el.dataset.rules === gameMode;
     el.classList.toggle('selected',selected); el.setAttribute('aria-pressed',selected);
     el.disabled = busy || mode === 'join';
   });
-  document.querySelector('.hero').classList.toggle('showdown',showdown && mode !== 'join');
-  const art = document.querySelector('.hero-art'), useThanos = showdown && mode !== 'join';
-  const source = useThanos ? 'thanos.png' : 'art/season4-showdown.jpg';
+  document.querySelector('.hero').classList.toggle('showdown',(showdown || thanos) && local);
+  document.querySelector('.hero').classList.toggle('thanos',thanos && local);
+  const art = document.querySelector('.hero-art'), useThanos = (showdown || thanos) && local;
+  const source = thanos && local ? 'art/thanos-gauntlet.jpg' : useThanos ? 'thanos.png' : 'art/season4-showdown.jpg';
   if (art.getAttribute('src') !== source) art.src = source;
   art.alt = useThanos ? 'Thanos holding the Infinity Gauntlet' : 'Carbide and Omega face off in Fortnite Season 4';
-  $('hero-title').innerHTML = useThanos ? 'INFINITY.<br>YOUR WAY.' : 'BRACE<br>FOR IMPACT.';
-  $('hero-description').textContent = useThanos ? 'One random Thanos. Ten second chances. Drop into a fixed endgame arena.' : 'The original island. The familiar drop. Your next session starts here.';
-  $('rules-description').textContent = mode === 'join' ? 'Your host chooses the game mode. Paste their invitation below.' : showdown ? 'Random Thanos · 10 respawns · Retained loot · Fixed arena. Experimental.' : 'Solo practice or a private match with friends.';
+  $('hero-title').innerHTML = thanos && local ? 'WIELD<br>THE POWER.' : useThanos ? 'INFINITY.<br>YOUR WAY.' : 'BRACE<br>FOR IMPACT.';
+  $('hero-description').textContent = thanos && local ? 'The whole island. A falling Infinity Gauntlet. Find it. Become Thanos.' : useThanos ? 'One random Thanos. Ten second chances. Drop into a fixed endgame arena.' : 'The original island. The familiar drop. Your next session starts here.';
+  $('rules-description').textContent = mode === 'join' ? 'Your host chooses the game mode. Paste their invitation below.' : thanos ? 'Full map · Gauntlet drop · Normal storm · No Showdown respawns. Experimental.' : showdown ? 'Random Thanos · 10 respawns · Retained loot · Fixed arena. Experimental.' : 'Solo practice or a private match with friends.';
   if (showdown && mode !== 'join') $('mode-note').textContent = 'Choose Start server in Reboot. Once everyone has joined the island, click Start Bus. The server chooses Thanos automatically.';
+  else if (thanos && local) $('mode-note').textContent = 'Thanos is preselected in Reboot. Click Start server, then Play in Fortnite. Start Bus Countdown when everyone is ready.';
   else $('mode-note').textContent = notes[mode];
   $('launch-label').textContent = !$('game-path').value.trim() ? 'Choose game folder' : mode === 'join' ? 'Join friend' : mode === 'host' ? 'Host & play' : 'Launch Fortnite';
 }
@@ -137,7 +139,7 @@ safely(async () => {
   $('app-version').textContent = initial.version;
   $('game-path').value = initial.settings.gamePath || '';
   $('host-address').value = initial.settings.host || '';
-  gameMode = initial.settings.gameMode === 'infinity' ? 'infinity' : 'classic';
+  gameMode = ['classic','thanos','infinity'].includes(initial.settings.gameMode) ? initial.settings.gameMode : 'classic';
   selectMode(['solo','host','join'].includes(initial.settings.mode) ? initial.settings.mode : 'solo');
   updateFolder(); render(initial); initialized = true;
 });

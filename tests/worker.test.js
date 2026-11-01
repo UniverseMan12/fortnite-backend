@@ -6,7 +6,7 @@ import os from 'node:os';
 import { fork } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
-for (const mode of ['host','join']) test(`desktop ${mode} worker routes invitations and cleans up owned roles on cancel`, { timeout: 15000 }, async t => {
+for (const [mode, gameMode] of [['host','infinity'],['host','thanos'],['solo','thanos'],['join','thanos']]) test(`desktop ${mode}/${gameMode} worker routes invitations and cleans up owned roles on cancel`, { timeout: 15000 }, async t => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'launcher-worker-'));
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));
   fs.mkdirSync(path.join(root, 'src')); fs.mkdirSync(path.join(root, 'scripts'));
@@ -23,12 +23,12 @@ for (const mode of ['host','join']) test(`desktop ${mode} worker routes invitati
   const events = [];
   const closed = new Promise((resolve,reject) => {child.once('exit', code => code === 0 ? resolve() : reject(new Error(`Worker exited ${code}`))); child.once('error',reject);});
   child.on('message', message => { events.push(message); if (message.type==='status' && message.message.startsWith('Fortnite ready.')) child.send({type:'stop'}); });
-  child.send({ type:'start', action:'launch', options:{mode,gamePath:'C:/game',gameMode:'infinity',host:'FN42:25.1.2.3'}, root });
+  child.send({ type:'start', action:'launch', options:{mode,gamePath:'C:/game',gameMode,host:'FN42:25.1.2.3'}, root });
   await closed;
   assert.equal(events.some(x => x.type==='addresses'), mode==='host');
-  assert.equal(events.some(x => x.type==='test-game' && x.role==='server' && x.gameMode==='infinity'), mode==='host');
-  assert.equal(events.find(x=>x.type==='test-backend').gameHost, mode==='host'?'127.0.0.1':'25.1.2.3');
-  assert.equal(events.find(x=>x.type==='test-game'&&x.role==='client').gameHost, mode==='host'?'127.0.0.1':'25.1.2.3');
-  assert.deepEqual(events.filter(x=>x.type==='test-cleanup').map(x=>x.role), mode==='host'?['client','server','backend']:['client','backend']);
+  assert.equal(events.some(x => x.type==='test-game' && x.role==='server' && x.gameMode===gameMode), mode!=='join');
+  assert.equal(events.find(x=>x.type==='test-backend').gameHost, mode!=='join'?'127.0.0.1':'25.1.2.3');
+  assert.equal(events.find(x=>x.type==='test-game'&&x.role==='client').gameHost, mode!=='join'?'127.0.0.1':'25.1.2.3');
+  assert.deepEqual(events.filter(x=>x.type==='test-cleanup').map(x=>x.role), mode!=='join'?['client','server','backend']:['client','backend']);
   assert.ok(events.some(x=>x.type==='done' && x.cancelled));
 });

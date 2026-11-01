@@ -1,5 +1,17 @@
 # Fortnite 4.2 Launcher
 
+![Fortnite 4.2 Launcher with Classic, Thanos and Infinity Showdown](docs/launcher-preview.png)
+
+*Preview of the upcoming 0.4.0-alpha.3 launcher. The latest published preview is [0.4.0-alpha.2](https://github.com/UniverseMan12/fortnite-4-2-launcher/releases/tag/v0.4.0-alpha.2).*
+
+## Three game modes
+
+- **Classic:** the normal island and practice tools.
+- **Thanos:** the ordinary Infinity Gauntlet playlist on the full island, with its own Fortnite × Avengers artwork. No fixed Showdown arena or additional Showdown respawns.
+- **Infinity Showdown:** a compact fixed arena, randomly assigned Thanos, retained equipment and ten extra respawns.
+
+The selected mode is preselected in Reboot; click **Start server**, then **Play** in Fortnite. Friends joining your session use the host's rules.
+
 ## Launcher redesign — 0.4.0-alpha.2
 
 **0.4.0-alpha.2** includes a simpler Play screen, original portal logo and startup animation, locally bundled Season 4 artwork, saved setup choices and copy/paste invitations for private multiplayer. Component preparation runs automatically at launch; manual checks are under **Settings → Repair and diagnostics**. See [release notes](RELEASE_NOTES.md), [current QA](RELEASE_QA.md) and the [alpha.2 downloads](https://github.com/UniverseMan12/fortnite-4-2-launcher/releases/tag/v0.4.0-alpha.2).

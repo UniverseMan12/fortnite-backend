@@ -1,4 +1,15 @@
-# Fortnite Launcher 0.4.0-alpha.2
+# Fortnite Launcher 0.4.0-alpha.3 — development preview
+
+## New in this preview
+
+- A separate **Thanos** selection alongside Classic and Infinity Showdown. It selects the existing Carmine / Infinity Gauntlet playlist on the full island, with late-game and Showdown rules disabled. Normal Thanos selection also disables practice respawning.
+- Original Fortnite × Avengers artwork with Omega and Thanos distinguishes the normal mode from Infinity Showdown.
+- The chosen mode is saved and preselected in Reboot. Click **Start server** there; selecting the mode a second time is unnecessary. Joining players follow the host's rules.
+- A launcher screenshot is included in the GitHub README. All three mode cards fit the supported window sizes.
+
+This preview is not yet a published GitHub release. Ordinary Thanos remains experimental: the launcher uses the existing playlist, and a complete match including the falling gauntlet has not been verified in this update. Server startup is still manual in Reboot. See [RELEASE_QA.md](RELEASE_QA.md) for validation.
+
+## Previous release: 0.4.0-alpha.2
 
 A redesigned Windows launcher for Fortnite 4.2. This prerelease builds on Infinity Showdown from alpha.1; v0.3.1 remains the stable release.
 

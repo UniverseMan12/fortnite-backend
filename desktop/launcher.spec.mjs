@@ -9,7 +9,7 @@ test.beforeEach(async () => {
   const env = { ...process.env, LAUNCHER_TEST_DATA: userData }; delete env.ELECTRON_RUN_AS_NODE;
   app = await electron.launch({ args: ['.'], env });
   page = await app.firstWindow();
-  await expect(page.locator('#app-version')).toHaveText('0.4.0-alpha.2');
+  await expect(page.locator('#app-version')).toHaveText('0.4.0-alpha.3');
 });
 test.afterEach(async () => { await app?.close(); fs.rmSync(userData, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 }); });
 
@@ -65,6 +65,31 @@ test('renderer has no Node access and blocks injected script markup in errors', 
   await expect(page.locator('#error-banner')).toBeVisible();
   expect(await page.evaluate(() => window.pwned)).toBeUndefined();
   expect(await page.locator('#error-banner img').count()).toBe(0);
+});
+
+test('ordinary Thanos has distinct artwork, persists and leaves join rules to the host', async () => {
+  await page.locator('[data-rules="thanos"]').click();
+  await expect(page.locator('#rules-description')).toContainText('Full map');
+  await expect(page.locator('#rules-description')).toContainText('No Showdown respawns');
+  await expect(page.locator('#mode-note')).toContainText('Thanos is preselected');
+  await expect(page.locator('.hero-art')).toHaveAttribute('src','art/thanos-gauntlet.jpg');
+  await expect(page.locator('.hero-art')).toHaveJSProperty('complete',true);
+  expect(await page.locator('.hero-art').evaluate(image=>image.naturalWidth)).toBeGreaterThan(500);
+  await expect.poll(()=>JSON.parse(fs.readFileSync(path.join(userData,'settings.json'),'utf8')).gameMode).toBe('thanos');
+  await page.reload();
+  await expect(page.locator('[data-rules="thanos"]')).toHaveAttribute('aria-pressed','true');
+  await page.emulateMedia({reducedMotion:'reduce'});
+  for (const [width,height] of [[940,700],[1200,820]]) {
+    await app.evaluate(({BrowserWindow},size)=>BrowserWindow.getAllWindows()[0].setSize(...size),[width,height]);
+    await expect(page.locator('#launch')).toBeInViewport();
+    expect(await page.locator('.rules-picker').evaluate(el=>el.scrollWidth<=el.clientWidth)).toBe(true);
+    await page.screenshot({path:`test-results/thanos-${width}.png`});
+  }
+  await page.locator('[data-rules="infinity"]').click();
+  await expect(page.locator('.hero-art')).toHaveAttribute('src','thanos.png');
+  await page.locator('[data-mode="join"]').click();
+  await expect(page.locator('[data-rules="thanos"]')).toBeDisabled();
+  await expect(page.locator('#rules-description')).toContainText('Your host chooses');
 });
 
 test('setup and invitations persist before launching and recover after a restart', async () => {

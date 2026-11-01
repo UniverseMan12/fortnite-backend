@@ -13,7 +13,8 @@ export function startGame(mode, onPhase = () => {}, { multiplayer = false, gameH
   const helper = spawn('powershell.exe', ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', path.join(ROOT, 'scripts', 'launch-game.ps1'), '-Mode', mode], {
     cwd: ROOT, windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'],
     env: { ...process.env, FORTNITE_LAUNCHER_MULTIPLAYER: multiplayer ? '1' : '0', LAUNCHER_GAME_HOST: gameHost,
-      FORTNITE_LAUNCHER_SHOWDOWN: mode === 'server' && gameMode === 'infinity' ? '1' : '0' }
+      FORTNITE_LAUNCHER_SHOWDOWN: mode === 'server' && gameMode === 'infinity' ? '1' : '0',
+      FORTNITE_LAUNCHER_THANOS: mode === 'server' && gameMode === 'thanos' ? '1' : '0' }
   });
   const label = mode === 'server' ? 'Game server' : 'Fortnite';
   const readiness = createReadiness(mode, onPhase, () => new Error(label + ' could not start. See logs/' + mode + '-helper.log.'));
