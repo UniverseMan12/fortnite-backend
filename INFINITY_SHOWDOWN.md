@@ -8,7 +8,7 @@ A private Fortnite 4.2 arena mode where players fight over one Infinity Gauntlet
 2. Friends select **Join friend** and paste the host's invitation or Hamachi/LAN IPv4. Everyone must be on the same LAN or private VPN. The invitation contains an address, not a VPN tunnel.
 3. Once Reboot's **Game** tab shows **Joinable true**, everyone can press **Play** in Fortnite in any order. The host does not have to reach the island first.
 4. Start **Bus Countdown** only after everyone has joined the island.
-5. After the bus jump window ends, a 20-second countdown begins. The original 4.2 Carmine Gauntlet meteor is spawned with its landing point inside the arena. Pick up the Gauntlet after impact to become Thanos; the role is no longer assigned randomly.
+5. After the bus jump window ends, a 20-second countdown begins. The original 4.2 Carmine Gauntlet meteor is spawned 600 metres above its landing point inside the arena. Its native projectile component is initialized downward at 60 metres per second. Pick up the Gauntlet after impact to become Thanos; the role is no longer assigned randomly.
 
 ## Rules
 
@@ -29,6 +29,6 @@ On November 1, 2026, the owner confirmed a successful two-PC Hamachi join after 
 
 ## Validation limits
 
-The Gauntlet redesign is under validation on `codex/showdown-gauntlet`. The first candidate's transformation was confirmed in-game, but its simulated pickup descent lacked the original meteor effects and the pickup model remained after use. The revised candidate uses the game's own meteor blueprint and replicates the consumed pickup state before destroying it. Falling visuals, impact audio and pickup disappearance still need in-game confirmation. No extracted game assets are distributed with the launcher. Native state tests cover pickup exclusivity, falling versus available states, re-dropping, bus timing, arena lifecycle and the respawn budget. See [RELEASE_QA.md](RELEASE_QA.md) for build and game-test results.
+The Gauntlet redesign is under validation on `codex/showdown-gauntlet`. The first candidate's transformation was confirmed in-game, but its simulated pickup descent lacked the original meteor effects and the pickup model remained after use. The first native-meteor candidate showed the original trail stuck near the ground in the owner's screenshot. The next revision starts that same blueprint in the sky, retains Carmine GameData, initializes its native movement and replicates its position. It also retains the consumed pickup notification before delayed destruction. Falling visuals, impact audio and pickup disappearance still need in-game confirmation by the owner. No extracted game assets are distributed with the launcher. Native state tests cover pickup exclusivity, falling versus available states, re-dropping, bus timing, arena lifecycle and the respawn budget. See [RELEASE_QA.md](RELEASE_QA.md) for build and game-test results.
 
 The older fixed storm can still display an approximately 1439-minute cosmetic timer. A complete match with the redesigned Gauntlet must be tested separately from the successful multiplayer connection test. Server-side status messages are available in Reboot and the F8 console.

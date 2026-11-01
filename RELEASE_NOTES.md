@@ -1,4 +1,16 @@
-# Fortnite Launcher 0.4.0-alpha.4
+# Fortnite Launcher 0.4.0-alpha.5 — test candidate
+
+This build is awaiting owner gameplay validation. It has not been published as a GitHub release.
+
+- Infinity Showdown uses a contested Gauntlet instead of choosing Thanos randomly. The original Fortnite 4.2 Carmine meteor asset now starts 600 metres above the arena and uses its native projectile movement, effects and sounds. This revises a failed candidate whose trail remained near the ground; the corrected visual result still needs confirmation.
+- Thanos is configured for 500 health and 200 shield, and drops the Gauntlet on death or disconnect. Pickup consumption is replicated before the world actor is removed.
+- The starter kit includes a legendary SCAR and bolt-action sniper, a blue pump, minis and medkits. Respawns refill ammunition, magazines, materials and healing supplies while retaining equipment.
+- Ten additional respawns, the fixed arena and restoration of the normal character after Thanos remain in place. Classic and ordinary full-island Thanos remain separate choices.
+- The owner confirmed successful Hamachi multiplayer after a scoped host firewall exception. Invitations still require a working LAN/VPN; the launcher does not provide a relay or automatically configure the firewall.
+
+The native build and rules tests pass. Gameplay validation of descent, impact, pickup disappearance and death/respawn behavior is pending. See [RELEASE_QA.md](RELEASE_QA.md) for evidence and limitations.
+
+## Previous release: 0.4.0-alpha.4
 
 ## New: download Fortnite 4.2 in the launcher
 
