@@ -2,9 +2,9 @@
 
 ![Fortnite 4.2 Launcher with Classic, Thanos and Infinity Showdown](docs/launcher-preview.png)
 
-*Preview of the upcoming 0.4.0-alpha.3 launcher, including a separate full-island Thanos mode. [Development branch](https://github.com/UniverseMan12/fortnite-4-2-launcher/tree/codex/thanos-mode) · [Artwork sources](https://github.com/UniverseMan12/fortnite-4-2-launcher/blob/codex/thanos-mode/desktop/ARTWORK.md).*
+*Fortnite Launcher 0.4.0-alpha.3, including Classic, full-island Thanos and Infinity Showdown. [Download alpha.3](https://github.com/UniverseMan12/fortnite-4-2-launcher/releases/tag/v0.4.0-alpha.3) · [Artwork sources](https://github.com/UniverseMan12/fortnite-4-2-launcher/blob/v0.4.0-alpha.3/desktop/ARTWORK.md).*
 
-The latest published prerelease is **[0.4.0-alpha.2](https://github.com/UniverseMan12/fortnite-4-2-launcher/releases/tag/v0.4.0-alpha.2)**, with the redesigned launcher, multiplayer invitations and Infinity Showdown. **[0.3.1](https://github.com/UniverseMan12/fortnite-4-2-launcher/releases/tag/v0.3.1)** remains stable; the source and instructions below describe that stable version.
+The latest published prerelease is **[0.4.0-alpha.3](https://github.com/UniverseMan12/fortnite-4-2-launcher/releases/tag/v0.4.0-alpha.3)**, with three selectable game modes, distinct Thanos artwork and multiplayer invitations. **[0.3.1](https://github.com/UniverseMan12/fortnite-4-2-launcher/releases/tag/v0.3.1)** remains stable; the source and instructions below describe that stable version.
 
 A launcher for Fortnite 4.2, with local play and private VPN/LAN multiplayer using **LawinServer** and components from **Project Reboot**.
 
