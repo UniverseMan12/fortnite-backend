@@ -25,6 +25,11 @@ try {
   expect(await page.locator('.hero-art').evaluate(image=>image.naturalWidth)).toBeGreaterThan(1000);
   await page.emulateMedia({reducedMotion:'reduce'});
   await page.screenshot({path:path.join(ROOT,'dist/launcher-preview.png')});
+  await page.locator('[data-rules="thanos"]').click();
+  await expect(page.locator('#mode-note')).toContainText('Thanos is preselected');
+  await expect(page.locator('.hero-art')).toHaveAttribute('src','art/thanos-gauntlet.jpg');
+  await expect(page.locator('.hero-art')).toHaveJSProperty('complete',true);
+  expect(await page.locator('.hero-art').evaluate(image=>image.naturalWidth)).toBeGreaterThan(500);
   await page.locator('[data-page="setup"]').click();
   await page.locator('#game-path').fill(path.join(temporary,'missing-game'));
   await page.locator('.advanced summary').click();
