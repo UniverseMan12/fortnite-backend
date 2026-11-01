@@ -342,7 +342,7 @@ namespace BotLobby {
     }
     void Tick(UNetDriver* driver) {
         if(!driver || !Globals::bStartedListening) return;
-        auto world=GetWorld(); if(!world) return;
+        auto world=GetWorld(); if(!world || world->GetNetDriver()!=driver) return;
         if(World.Get()!=world || Driver.Get()!=driver) {
             World=Ref(world); Driver=Ref(driver); Active.clear(); WarmupPoints.clear(); LandingPoints.clear();
             NextId=Failures=0; RequestedForRound=-1; NextSpawn=NextStatus=NextPopulation=0;

@@ -168,7 +168,9 @@ Validation on 4.2: server startup, joining through Play, the new tabs, Gauntlet 
 
 Download links and installation requirements are listed [above](#installation--downloads). Game files are separate from this repository.
 
-First-time setup needs internet and may take a few minutes. Pinned components are downloaded automatically, with size limits, checksum verification and retries for temporary network failures. Interrupted or invalid downloads keep existing files intact. Server replacement is atomic and saves the previous DLL as runtime/reboot.previous.dll. Later starts reuse installed components. The host and client run as two game processes, so allow enough RAM for both. Local matches do not automatically contain other players or bots.
+First-time setup needs internet and may take a few minutes. Pinned components are downloaded automatically, with size limits, checksum verification and retries for temporary network failures. Interrupted or invalid downloads keep existing files intact. Server replacement is atomic and saves the previous DLL as runtime/reboot.previous.dll. Later starts reuse installed components. The host and client run as two game processes, so allow enough RAM for both. The stable v0.4.0 release does not automatically contain other players or bots.
+
+The **experimental `codex/bot-lobby` branch** adds up to 99 bots to Classic and ordinary Thanos, filling the match to 100 including humans. Infinity Showdown excludes bots. This is an owner playtest build, not part of the stable release; see [bot test instructions and limitations](BOT_LOBBY.md).
 
 ## Troubleshooting
 
