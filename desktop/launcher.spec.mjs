@@ -9,7 +9,7 @@ test.beforeEach(async () => {
   const env = { ...process.env, LAUNCHER_TEST_DATA: userData }; delete env.ELECTRON_RUN_AS_NODE;
   app = await electron.launch({ args: ['.'], env });
   page = await app.firstWindow();
-  await expect(page.locator('#app-version')).toHaveText('0.4.0-alpha.4');
+  await expect(page.locator('#app-version')).toHaveText('0.4.0');
 });
 test.afterEach(async () => { await app?.close(); fs.rmSync(userData, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 }); });
 

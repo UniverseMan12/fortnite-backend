@@ -1,57 +1,38 @@
-# Fortnite Launcher 0.4.0-alpha.4
+# Fortnite Launcher 0.4.0
 
-## New: download Fortnite 4.2 in the launcher
+Regular Windows x64 release for Fortnite 4.2 / CL-4072250, including the launcher features introduced in the alpha series and the Thanos reselection fix.
 
-- The main **Play** button displays **Download Fortnite 4.2** when no game folder is selected. Click it to choose the installation location; no trip to Settings is needed.
-- Progress and **Cancel installation** appear beside the main controls. After download and verification, the launcher unpacks the game, automatically selects the folder containing **FortniteGame** and **Engine**, and switches the button to **Launch Fortnite** (or Host & play / Join friend).
-- If the game is already installed, **Choose folder** opens a folder picker directly from Play.
-- Download progress, retry/resume after interruption and cancellation are built in. Choose the same location to resume; an interrupted extraction can reuse the verified archive.
-- About 32 GiB free space is required while installing. Existing folders are not overwritten. Only the actual Fortnite game subtree is extracted; the archive's extra Epic launcher installers are excluded.
-- The separate, pinned 7-Zip extractor and upstream source are bundled. Game files remain a separate download; no Google login or external extraction application is needed.
-- Google Drive quota/sharing failures are reported with a retry or existing-folder fallback. This feature supports 4.2 / CL-4072250 only.
+## Download and play
 
-Windows x64 installer and portable builds are provided below. The download is 8.3 GiB and installation needs about 32 GiB of free space. This is an experimental prerelease; v0.3.1 remains the stable version.
+- Download Fortnite 4.2 directly from the main **Play** button when no game folder is selected. Download progress and cancellation stay on Play.
+- Downloads support resume, checksum verification and automatic extraction. The launcher automatically finds and selects the folder containing **FortniteGame** and **Engine**.
+- Already installed? Use **Choose folder** on Play. The game download is about 8.3 GiB; allow about 32 GiB of free space while installing.
+- Saved settings, automatic component preparation, session logs and **Stop session** are included, alongside the redesigned Season 4 launcher and artwork.
 
-## Alpha.4 downloads and validation
+## Three game modes
 
-- **Fortnite-Launcher-0.4.0-alpha.4-x64-nsis.exe** — installer.
-- **Fortnite-Launcher-0.4.0-alpha.4-x64-portable.exe** — portable application.
-- **SHA256SUMS.txt**, **RELEASE-NOTES.md** and **launcher-preview.png**.
+- **Classic:** full-island gameplay and practice tools.
+- **Thanos:** the ordinary Infinity Gauntlet playlist on the full island, with separate artwork.
+- **Infinity Showdown:** a compact fixed arena, random Thanos selection, a starter kit, retained equipment and ten additional respawns per player.
+- The selected mode is preselected in Reboot. Click **Start server**, then **Play** in Fortnite. The host starts the bus when everyone is on the island.
 
-45 Node tests and 13 desktop tests passed. A full-size live download/resume, SHA-256 check, extraction and build detection passed. The installed game also started the real game-server helper and stopped cleanly. Packaged download cancellation/resume and portable checks passed. See the [alpha.4 QA record](https://github.com/UniverseMan12/fortnite-4-2-launcher/blob/v0.4.0-alpha.4/RELEASE_QA.md). Google Drive availability/quota is external; existing-folder selection remains available. The EXEs are unsigned, and clean-machine installation/uninstallation is not fully tested.
+## Fixes and multiplayer
 
-## Previous release: 0.4.0-alpha.3
-
-Three game modes in one Windows launcher for Fortnite 4.2: **Classic**, **Thanos** and **Infinity Showdown**. This is an experimental prerelease; v0.3.1 remains stable.
-
-## New in alpha.3
-
-- **Thanos** is now a separate launcher choice. It selects the existing Carmine / Infinity Gauntlet playlist on the full island, with late-game, Showdown rules and practice respawning disabled.
-- A separate Fortnite × Avengers image featuring Omega and Thanos distinguishes this mode from Infinity Showdown.
-- The chosen mode is saved and preselected in Reboot. Click **Start server** there; selecting the mode again is unnecessary. Joining players follow the host's rules.
-- All three mode cards fit the supported window sizes. The GitHub README includes a real launcher screenshot.
-
-## Included from earlier alpha releases
-
-- Redesigned Play screen, original portal logo, startup animation, Season 4 banners and automatic component preparation.
-- Private multiplayer invitations: hosts copy an FN42 invitation, friends paste it into Join friend. Both players still need the same LAN or private VPN.
-- **Infinity Showdown:** compact fixed arena, random Thanos selection 20 seconds after landing, ten extra respawns, retained equipment and a strong starter kit. It is separate from the normal Thanos mode.
-- Fixes for the Thanos-death and bus-start crashes, restored skin/body proportions, airborne respawning and the storm wall disappearing across bus departure. Early bus exit is guarded by arena readiness and countdown checks.
-- Backend startup and cancellation fixes, robust saved settings, profile/cloudstorage path validation, bounded settings uploads and HTTP/XMPP error handling.
+- **Thanos reselection:** after Thanos dies or disconnects, everyone waits through a shared **20-second cooldown** before the next random selection. The killer does not automatically receive the role. Every eligible player can be selected, including the previous Thanos after their respawn and landing delay. Infinity Showdown uses random assignment; it does not spawn a falling gauntlet.
+- Retains fixes for Thanos-death and bus-start crashes, restored character proportions, airborne respawns, storm-wall persistence across bus departure and guarded early bus exit.
+- Includes private multiplayer invitations and host/join routing. Friends use the host's VPN/LAN address and must share a LAN or private VPN such as Hamachi or Radmin VPN. The owner has reported a successful two-player Hamachi session.
+- Retains fixes for backend startup/cancellation, saved settings, cloudstorage/profile validation and HTTP/XMPP error handling.
 
 ## Downloads
 
-- **Fortnite-Launcher-0.4.0-alpha.3-x64-nsis.exe** — Windows installer.
-- **Fortnite-Launcher-0.4.0-alpha.3-x64-portable.exe** — run without installing.
-- **SHA256SUMS.txt** — executable checksums.
-- **launcher-preview.png** — launcher screenshot.
+- **Fortnite-Launcher-0.4.0-x64-nsis.exe** — Windows installer.
+- **Fortnite-Launcher-0.4.0-x64-portable.exe** — run without installing.
+- **SHA256SUMS.txt**, **RELEASE-NOTES.md** and **launcher-preview.png**.
 
-Requires Windows x64, your own Fortnite 4.2 files and the Visual C++ x64 runtime. Node.js and Git are not required by the EXEs. First component preparation requires internet access.
+Use the new launcher on the host to apply the server fix. Windows 10/11 x64 and the Visual C++ x64 runtime are required. Node.js and Git are not needed by EXE users. Fortnite game files remain a separate download. Existing launcher settings are kept in the same per-user data directory.
 
-## Verification and known limits
+## Validation and remaining limits
 
-36 Node tests and 11 desktop tests passed. The native DLL passed CI compilation and rules tests. Packaged and portable startup tests passed, including starting the actual game-server helper with Thanos selected up to Reboot settings and stopping it cleanly. All 846 payload hashes were verified. The EXEs were built locally with the runtime at commit 69a9a2d; the release commit only updates release documentation. See the [QA record](https://github.com/UniverseMan12/fortnite-4-2-launcher/blob/v0.4.0-alpha.3/RELEASE_QA.md).
+The pinned native server compiled successfully and passed rules tests covering the 20-second boundary, repeated cooldowns, empty selection pools and all eligible players. The preceding Alpha.4 fix passed 45 Node tests and verification of all 852 staged and packaged payload files. Release build results are recorded in [RELEASE_QA.md](https://github.com/UniverseMan12/fortnite-4-2-launcher/blob/v0.4.0/RELEASE_QA.md).
 
-Ordinary Thanos remains experimental: a complete match including the falling gauntlet has not been verified in this update. Server startup still requires **Start server** in Reboot. Real two-PC VPN play and clean-machine installation/uninstallation remain unverified. The EXEs are unsigned. Infinity Showdown can show an approximately 1439-minute cosmetic storm timer.
-
-The recorded backend production dependency audit has zero findings; the development build tree has 15 moderate findings. Those build tools are not bundled as runtime dependencies. [Artwork sources](https://github.com/UniverseMan12/fortnite-4-2-launcher/blob/v0.4.0-alpha.3/desktop/ARTWORK.md).
+This is a regular release, not a GitHub prerelease. The new death-to-reselection behavior still needs an in-game multiplayer playtest. Ordinary Thanos gameplay remains experimental. The approximately 1439-minute Showdown storm timer is cosmetic. EXEs are unsigned; clean-machine installation/uninstallation is not fully tested. The launcher has no automatic updater or automatic firewall configuration. Game-download availability depends on the source host.

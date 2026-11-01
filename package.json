@@ -1,6 +1,6 @@
 {
   "name": "fortnite-backend-local",
-  "version": "0.4.0-alpha.4",
+  "version": "0.4.0",
   "private": true,
   "description": "Launcher for a local Fortnite legacy backend",
   "type": "module",
