@@ -1,9 +1,6 @@
-name: Publish launcher 0.3.1
+name: Legacy publisher 0.3.1 (manual only)
 on:
   workflow_dispatch:
-  push:
-    paths:
-      - '.github/workflows/publish-launcher.yml'
 permissions:
   actions: read
   contents: write
@@ -12,6 +9,8 @@ concurrency:
   cancel-in-progress: false
 jobs:
   publish:
+    # Historical publisher: never run against a newer branch or release tag.
+    if: github.ref == 'refs/tags/v0.3.1'
     runs-on: windows-2022
     timeout-minutes: 25
     env:
