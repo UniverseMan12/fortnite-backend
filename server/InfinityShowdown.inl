@@ -49,6 +49,7 @@ namespace InfinityShowdown {
     static FVector GauntletLanding;
     static bool SkyDrop = true;
     static double FallStartedAt = 0;
+    static double NextMeteorLog = 0;
     static std::mt19937 Random(std::random_device{}());
     static bool AssignmentSucceeded = false, Faulted = false;
     static double NextTick = 0;
@@ -243,7 +244,9 @@ namespace InfinityShowdown {
         // Replicate the real Carmine asset, retaining Solo gameplay on the server.
         auto solo = LoadObject<UObject>(L"/Game/Athena/Playlists/Playlist_DefaultSolo.Playlist_DefaultSolo", FindObject<UClass>(L"/Script/FortniteGame.FortPlaylistAthena"));
         if (!playlist || !solo || playlist == solo) { Report("Infinity Showdown: Carmine HUD playlist is unavailable."); return; }
-        for (auto name : {"GameData", "LootTierData", "LootPackages", "ResourceRates", "RangedWeapons"}) {
+        // Retain Carmine GameData: its meteor movement curves are part of the
+        // original Gauntlet lifecycle. Only the ordinary player loot uses Solo.
+        for (auto name : {"LootTierData", "LootPackages", "ResourceRates", "RangedWeapons"}) {
             const int target = playlist->GetOffset(name,false), source = solo->GetOffset(name,false);
             if (target >= 0 && source >= 0) playlist->Get<TSoftObjectPtr<UObject>>(target) = solo->Get<TSoftObjectPtr<UObject>>(source);
         }
@@ -467,8 +470,9 @@ namespace InfinityShowdown {
         if (!blueprintClass) return false;
         auto type = LoadObject<UClass>(L"/Game/Athena/Playlists/Carmine/MeteorDrop/AthenaSupplyDrop_Meteor_Gauntlet.AthenaSupplyDrop_Meteor_Gauntlet_C",blueprintClass);
         if (!type) return false;
-        FTransform transform{}; transform.Translation = landing;
-        transform.Translation.Z -= 150.f; // GroundAt includes pickup clearance.
+        auto ground = landing; ground.Z -= 150.f; // GroundAt includes pickup clearance.
+        auto start = ground; start.Z += InfinityRules::MeteorHeight;
+        FTransform transform{}; transform.Translation = start;
         transform.Rotation = FRotator().Quaternion(); transform.Scale3D = FVector(1,1,1);
         auto meteor = GetWorld()->SpawnActor<AFortAthenaSupplyDrop>(type, transform,
             CreateSpawnParameters(ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn,true));
@@ -477,19 +481,57 @@ namespace InfinityShowdown {
         const int groundOffset = meteor->GetOffset("GroundLocation",false);
         const int initializedOffset = meteor->GetOffset("bGroundLocationInitialized",false);
         if (landingOffset < 0 || groundOffset < 0 || initializedOffset < 0) { meteor->K2_DestroyActor(); return false; }
-        meteor->Get<FVector>(landingOffset) = transform.Translation;
-        meteor->Get<FVector>(groundOffset) = transform.Translation;
+        meteor->Get<FVector>(landingOffset) = ground;
+        meteor->Get<FVector>(groundOffset) = ground;
         meteor->Get<bool>(initializedOffset) = true;
-        // Keep the impact in the fixed arena. Retain the blueprint's own height,
-        // speed, movement, particle and sound settings.
+        // BeginPlay creates the original world-space trail. Its initial spawn
+        // transform must already be in the sky, not at the impact location.
         for (auto name : { "DescentOffsetMin", "DescentOffsetMax", "DescentYOffsetMin", "DescentYOffsetMax", "InitialFallDelay" }) {
             const int offset = meteor->GetOffset(name,false); if (offset >= 0) meteor->Get<float>(offset) = 0.f;
         }
-        GauntletMeteor = Ref(meteor); FallStartedAt = now; GauntletState.Spawned(true);
+        GauntletMeteor = Ref(meteor); FallStartedAt = now; NextMeteorLog = now + 2; GauntletState.Spawned(true);
         UGameplayStatics::FinishSpawningActor(meteor,transform);
+        // The blueprint's construction/BeginPlay can replace these values with
+        // supply-drop defaults. Set the replicated flight parameters together
+        // before the first network update, and use its native movement component.
+        meteor->Get<FVector>(landingOffset) = ground;
+        meteor->Get<FVector>(groundOffset) = ground;
+        meteor->Get<bool>(initializedOffset) = true;
+        if (!Put(meteor,"FallHeight",InfinityRules::MeteorHeight) ||
+            !Put(meteor,"FallSpeed",InfinityRules::MeteorSpeed) ||
+            !Put(meteor,"FallDirection",FVector(0,0,-1))) {
+            meteor->K2_DestroyActor(); GauntletMeteor = {}; return false;
+        }
+        Put(meteor,"performUpdate",true); Put(meteor,"autoOpen",true);
+        const int movementOffset = meteor->GetOffset("ProjectileMovement",false);
+        const int rootOffset = meteor->GetOffset("RootComponent",false);
+        auto movement = movementOffset >= 0 ? meteor->Get<UObject*>(movementOffset) : nullptr;
+        auto root = rootOffset >= 0 ? meteor->Get<UObject*>(rootOffset) : nullptr;
+        auto setUpdated = movement ? movement->FindFunction("SetUpdatedComponent") : nullptr;
+        auto activate = movement ? movement->FindFunction("Activate") : nullptr;
+        auto tick = movement ? movement->FindFunction("SetComponentTickEnabled") : nullptr;
+        auto replicate = meteor->FindFunction("SetReplicateMovement");
+        if (!root || !setUpdated || !activate || !tick || !replicate ||
+            !Put(movement,"Velocity",FVector(0,0,-InfinityRules::MeteorSpeed))) {
+            meteor->K2_DestroyActor(); GauntletMeteor = {}; return false;
+        }
+        Put(movement,"InitialSpeed",InfinityRules::MeteorSpeed);
+        Put(movement,"MaxSpeed",InfinityRules::MeteorSpeed);
+        Put(movement,"ProjectileGravityScale",0.f);
+        for (auto name : { "bSimulationEnabled", "bUpdateOnlyIfRendered" }) {
+            const int offset = movement->GetOffset(name,false);
+            auto property = movement->GetProperty(name,false);
+            if (offset >= 0 && property) movement->SetBitfieldValue(offset,GetFieldMask(property),std::string(name) == "bSimulationEnabled");
+        }
+        movement->ProcessEvent(setUpdated,&root);
+        meteor->TeleportTo(start,FRotator());
+        bool enabled = true;
+        movement->ProcessEvent(activate,&enabled); movement->ProcessEvent(tick,&enabled);
+        meteor->ProcessEvent(replicate,&enabled);
+        meteor->GetNetUpdateFrequency() = 30.f;
         meteor->SetNetDormancy(ENetDormancy::DORM_Awake); meteor->ForceNetUpdate();
-        LOG_INFO(LogDev,"Infinity Showdown: native gauntlet meteor spawned; landing {}, {}, {}, actor Z {}.",
-            landing.X,landing.Y,landing.Z,meteor->GetActorLocation().Z);
+        LOG_INFO(LogDev,"Infinity Showdown: native meteor starts at Z {}, target Z {}, downward speed {} cm/s.",
+            meteor->GetActorLocation().Z,ground.Z,InfinityRules::MeteorSpeed);
         return true;
     }
     static void RetirePickup(AFortPickup* pickup, AFortPawn* pawn, double now) {
@@ -534,6 +576,11 @@ namespace InfinityShowdown {
             LOG_INFO(LogDev,"Infinity Showdown: gauntlet spawned at {}, {}, {} (sky {}).",location.X,location.Y,location.Z,SkyDrop);
         }
         if (auto meteor = Cast<AActor>(GauntletMeteor.Get())) {
+            if (GauntletState.phase == InfinityRules::GauntletPhase::Falling && now >= NextMeteorLog) {
+                NextMeteorLog = now + 2;
+                LOG_INFO(LogDev,"Infinity Showdown: meteor flight {}s, actor Z {}, impact Z {}.",
+                    now-FallStartedAt,meteor->GetActorLocation().Z,GauntletLanding.Z-150.f);
+            }
             const int openedOffset = meteor->GetOffset("Opened",false);
             if (openedOffset >= 0 && meteor->Get<bool>(openedOffset)) {
                 // Some 4.2 loot tables do not invoke the native spawn hook. Only

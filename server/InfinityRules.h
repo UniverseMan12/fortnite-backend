@@ -9,6 +9,7 @@
 namespace InfinityRules {
     constexpr int RespawnLimit = 10;
     constexpr double GauntletDelay = 20.0;
+    constexpr float MeteorHeight = 60000.f, MeteorSpeed = 6000.f;
     constexpr float ThanosHealth = 500.f, ThanosShield = 200.f;
     enum class GauntletPhase { Waiting, Falling, Available, Held };
     struct GauntletCycle {
