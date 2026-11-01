@@ -2,9 +2,11 @@
 
 ![Fortnite 4.2 Launcher with Classic, Thanos and Infinity Showdown](docs/launcher-preview.png)
 
-*Fortnite Launcher 0.4.0-alpha.3, including Classic, full-island Thanos and Infinity Showdown. [Download alpha.3](https://github.com/UniverseMan12/fortnite-4-2-launcher/releases/tag/v0.4.0-alpha.3) · [Artwork sources](https://github.com/UniverseMan12/fortnite-4-2-launcher/blob/v0.4.0-alpha.3/desktop/ARTWORK.md).*
+*Fortnite Launcher 0.4.0-alpha.4, including Classic, full-island Thanos, Infinity Showdown and game installation from Play. [Download alpha.4](https://github.com/UniverseMan12/fortnite-4-2-launcher/releases/tag/v0.4.0-alpha.4) · [Artwork sources](https://github.com/UniverseMan12/fortnite-4-2-launcher/blob/v0.4.0-alpha.4/desktop/ARTWORK.md).*
 
-The latest published prerelease is **[0.4.0-alpha.3](https://github.com/UniverseMan12/fortnite-4-2-launcher/releases/tag/v0.4.0-alpha.3)**, with three selectable game modes, distinct Thanos artwork and multiplayer invitations. **[0.3.1](https://github.com/UniverseMan12/fortnite-4-2-launcher/releases/tag/v0.3.1)** remains stable; the source and instructions below describe that stable version.
+The latest published prerelease is **[0.4.0-alpha.4](https://github.com/UniverseMan12/fortnite-4-2-launcher/releases/tag/v0.4.0-alpha.4)**. On **Play**, the main button says **Download Fortnite 4.2** when no game folder is selected. Choose an installation location; progress and cancellation stay on Play. After downloading, verifying and extracting the game, the launcher automatically selects the folder containing **FortniteGame** and **Engine** and switches to **Launch Fortnite**. Already installed? Use **Choose folder** on Play. Allow about **32 GiB free space** for the 8.3 GiB download and extraction. Interrupted downloads can resume at the same location.
+
+All three game modes and multiplayer invitations remain available. Invitations share the server address; friends still need the same LAN or private VPN, such as Hamachi or Radmin VPN. See the [alpha.4 release notes and checks](https://github.com/UniverseMan12/fortnite-4-2-launcher/releases/tag/v0.4.0-alpha.4). **[0.3.1](https://github.com/UniverseMan12/fortnite-4-2-launcher/releases/tag/v0.3.1)** remains stable; the source and instructions below describe that stable version.
 
 A launcher for Fortnite 4.2, with local play and private VPN/LAN multiplayer using **LawinServer** and components from **Project Reboot**.
 
