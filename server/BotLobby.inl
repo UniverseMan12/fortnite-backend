@@ -106,7 +106,7 @@ namespace BotLobby {
         if (playing && !Faulted) for (int i = 0; i < connections.Num(); ++i) {
             auto connection = connections.at(i); if (!connection) continue;
             auto controller = Cast<AFortPlayerControllerAthena>(connection->GetPlayerController());
-            auto pawn = controller ? controller->GetMyFortPawn() : nullptr;
+            auto pawn = controller ? Cast<AFortPlayerPawn>(controller->GetMyFortPawn()) : nullptr;
             auto state = controller ? Cast<AFortPlayerStateAthena>(controller->GetPlayerState()) : nullptr;
             if (Living(pawn) && state && !state->IsInAircraft()) {
                 humans.push_back(pawn);
