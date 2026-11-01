@@ -43,7 +43,9 @@ test('game installation extracts only the game, checks its build and preserves e
   assert.equal((await fs.readdir(target)).some(n=>n.startsWith('.fortnite-4.2-install-')),false);
   const installed=await installGame(target,{source,extractor,fetchImpl});
   assert.equal(requests,1,'retry after extraction cancellation reuses the verified cached download');
-  assert.equal(installed,path.join(target,'Fortnite-4.2'));
+  // Windows CI may expose TEMP via an 8.3 alias (RUNNER~1). The installer
+  // intentionally returns the canonical path, so compare canonical targets.
+  assert.equal(installed,await fs.realpath(path.join(target,'Fortnite-4.2')));
   await assert.rejects(fs.stat(path.join(installed,'unrelated-launcher.exe')),{code:'ENOENT'});
   assert.equal((await fs.stat(path.join(installed,'FortniteGame/Binaries/Win64/FortniteClient-Win64-Shipping.exe'))).size,512);
   await assert.rejects(installGame(target,{source,extractor,fetchImpl}),/already exists/);

@@ -6,6 +6,7 @@ on:
       - 'desktop/**'
       - 'src/**'
       - 'scripts/**'
+      - 'tests/**'
       - 'package.json'
       - 'package-lock.json'
       - 'dependencies.lock.json'
