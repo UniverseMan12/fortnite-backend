@@ -79,7 +79,7 @@ namespace BotLobby {
         // No LocalPlayer/NetConnection exists for a bot. Otherwise CharacterMovement
         // waits for client moves which never arrive on this server-only controller.
         if (!Put(controller,"bIsLocalPlayerController",true)) return false;
-        Put(pawn,"RemoteRole",ENetRole::ROLE_SimulatedProxy);
+        Put(pawn,"RemoteRole",uint8_t(1)); // UE4 ROLE_SimulatedProxy; field offset remains reflected.
         Put(controller,"AcknowledgedPawn",static_cast<APawn*>(pawn));
         Call reset(controller,"ResetIgnoreMoveInput"); if(!reset.Run()) return false;
         auto movement=Read<UObject*>(pawn,"CharacterMovement"); if(!movement) return false;
