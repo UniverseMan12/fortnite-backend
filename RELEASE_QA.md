@@ -1,5 +1,15 @@
 # Desktop release checks
 
+## NOVA DROP 0.4.0 — regular release
+
+- The launcher is now named **NOVA DROP**, with its original transparent meteor emblem in the sidebar, startup screen and Windows icon. The existing app ID and per-user settings directory remain unchanged. The release has no alpha suffix and is published with GitHub's prerelease flag disabled.
+- [Windows release build 41329714710](https://github.com/UniverseMan12/fortnite-4-2-launcher/actions/runs/41329714710) built commit `e246c57e95c99fba39e03964ef0d0b7b5b647ca5`. **45 Node tests and 13 desktop tests passed**, including the version, title and loaded branding asset checks. Packaged and portable smoke tests passed verified payload preparation, build detection, first-use setup, UI/artwork loading, invalid-input handling and clean close. These ran on GitHub's Windows runner, not the owner's desktop.
+- The CI package contains **852 verified runtime files** and the pinned native DLL from `1562a467694f98444c16ee2284a1eff5057f2b81`. The new shared 20-second cooldown and all-eligible random selection retain the native coverage documented below.
+- Release artifact `13093355095` was downloaded and verified against GitHub's archive SHA-256 `48558bd893995d38b421aaa1848de794e9db86a9ea6b3229122665998ac208b1`. Both EXEs matched the bundled checksums: installer `c4a9f494dd2eb6d61d408ada9bc0fd8920f563d3bba86c451d55ef497385f0b8`, portable `fc57757f45a3074c52a7725b3a8536e8836bfaa784d81bb9c104333043063b61`. The publication process verifies each uploaded asset's size and SHA-256 before making the draft public.
+- The CI-generated launcher screenshot was visually inspected and copied into the README's existing screenshot path. Branding fits the sidebar, all three mode cards remain visible, and the main download button and version display are readable. The PNG emblem's transparency was checked. The publication commit changes only this QA document and the screenshot after the tested build.
+- The Windows CI runner exposed a pre-existing assertion that compared a canonical installation path to an equivalent 8.3 alias. The regression test now compares resolved paths; installation behavior is unchanged.
+- The owner previously reported successful two-player Hamachi gameplay. The new death-to-reselection delay has not yet been playtested in a multiplayer match. Ordinary Thanos mode remains experimental; unsigned executables, the cosmetic Showdown storm timer and clean-machine installation limits are unchanged. Publishing a regular release does not imply those checks were performed.
+
 ## Alpha.4 Thanos reselection fix — test build
 
 - Restored Alpha.4 baseline with a shared 20-second cooldown after Thanos dies or disconnects. Duplicate death callbacks return before scheduling; final elimination also starts the cooldown. Normal player deaths do not restart it. Every eligible player can win the draw, including the previous Thanos after their existing respawn/landing delay.
