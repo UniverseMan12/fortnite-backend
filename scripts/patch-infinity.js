@@ -58,4 +58,21 @@ export function patchInfinity(root) {
     ['\t\tif (ImGui::Button("Start server")) {',
      '\t\tif (InfinityShowdown::Enabled.load()) { ImGui::TextUnformatted("Infinity Showdown: random Thanos, 10 respawns, retained loot."); }\n\t\tif (ImGui::Button("Start server")) {\n\t\t\tif (InfinityShowdown::Enabled.load()) { SetIsLategame(true); Globals::bEnableAGIDs = true; PlaylistName = "/Game/Athena/Playlists/Carmine/Playlist_Carmine.Playlist_Carmine"; }']
   ]);
+  // Upgrade previously patched sources too: ordinary Thanos uses the unmodified
+  // Carmine playlist, with no Showdown zone, kit or respawn rules.
+  const gui = path.join(directory, 'gui.h');
+  let source = fs.readFileSync(gui, 'utf8');
+  if (!source.includes('FORTNITE_LAUNCHER_THANOS')) {
+    const before = '\tchar showdown[2] = {};';
+    if (source.split(before).length !== 2) throw new Error('Missing launcher mode initialization in gui.h');
+    source = source.replace(before, `\tchar thanos[2] = {};
+\tif (GetEnvironmentVariableA("FORTNITE_LAUNCHER_THANOS", thanos, sizeof(thanos)) == 1 && thanos[0] == '1') {
+\t\tInfinityShowdown::Enabled.store(false);
+\t\tSetIsLategame(false); Globals::bEnableAGIDs = true;
+\t\tPlaylistName = "/Game/Athena/Playlists/Carmine/Playlist_Carmine.Playlist_Carmine";
+\t\tLocalTools::PracticeRespawn.store(false);
+\t}
+${before}`);
+    fs.writeFileSync(gui, source);
+  }
 }
