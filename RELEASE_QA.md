@@ -2,18 +2,20 @@
 
 ## 0.4.0-alpha.1 — Infinity Showdown, November 1, 2026
 
-This is an experimental branch build. The stable public release remains **v0.3.1**. No GitHub release was published for this update, and the branch was not merged into `main`.
+The release target is the experimental **v0.4.0-alpha.1** prerelease. The stable public release remains **v0.3.1**. The development branch has not been merged into `main`.
 
 ### Server provenance
 
-- Source: `7fa094930fbc015a09a95be3b2febb4872f0ebd7` on `codex/infinity-showdown`.
-- [Native build 41252165069](https://github.com/UniverseMan12/fortnite-backend/actions/runs/41252165069): successful compilation and native rules tests, including solo fallback and preference for a different contender.
-- Artifact: `13062350035`, `launcher-server`.
-- Archive SHA-256: `b614ede5c851f0a282c3214f85299cfa889a2521296e1bf26785ee15474dc82a`, verified against GitHub artifact metadata before updating the dependency manifest.
-- DLL SHA-256: `0955985cf02d0318b76ee62abde3e4063883de93dfb2aa7fb49a9680a2f7319c`, verified against the artifact's `reboot.sha256`.
+- Native source: `bda98ce772651b219476e04e934d9397effe9fe1` on `codex/infinity-showdown`.
+- [Native build 41255821532](https://github.com/UniverseMan12/fortnite-4-2-launcher/actions/runs/41255821532): successful compilation and native rules tests, including solo fallback, multiplayer preference and guarded bus exit.
+- Artifact: `13063331595`, `launcher-server`.
+- Archive SHA-256: `9b0ba9544f82e78e207f637b72fe0a9bf6efa2ac24946f354dabde23a44d1ac0`, verified against GitHub artifact metadata before updating the dependency manifest.
+- DLL SHA-256: `5c898810f41344de82d5911c3249d2c84decbac4df6605b83ca305218328fa67`, verified against the artifact's `reboot.sha256`.
 - The previous installed DLL hash is retained in `previousGameServerSha256s` so setup can safely replace it.
 
 ### Current validation
+
+Both alpha EXEs were rebuilt with the final `bda98ce` DLL after the confirmed zone playtest. Packaged and portable smoke tests passed again on those final outputs. Historical gameplay observations below name their tested DLL explicitly.
 
 - `npm run setup`: passed; installed the new pinned DLL.
 - `npm test`: **28 passed**, run before starting Fortnite.
@@ -23,15 +25,17 @@ This is an experimental branch build. The stable public release remains **v0.3.1
 - Packaged launcher smoke test with Infinity Showdown selected: passed fresh-profile extraction, build detection, first-use preparation, public-host rejection and renderer-error checks.
 - Portable smoke test: passed self-extraction, initial UI/artwork, payload bootstrap, invalid-folder recovery and closing the application.
 - All 845 packaged payload file hashes were checked. Bundled backend profile templates match the pinned public source apart from Windows newlines; no private configuration, session data, logs or Fortnite game files were staged.
-- `dist/SHA256SUMS.txt` and `dist/RELEASE-NOTES.md` were regenerated. The alpha notes link to this branch's QA record.
-- A fresh isolated manual playtest reached the island and the first successful Thanos transformation. The loaded server module was checked against the new DLL hash. After Thanos death, the tester's screenshot shows the original character skydiving with 100 health, 100 shield, restored weapons/consumables and retained materials. The server log records gadget removal and new possession without a crash.
+- `dist/SHA256SUMS.txt` and `dist/RELEASE-NOTES.md` are generated from the final EXEs and the repository's complete release notes before upload. The alpha notes link to this branch's QA record.
+- An isolated manual playtest of the earlier `7fa0949` DLL reached the island and the first successful Thanos transformation. Its loaded module hash was verified. After Thanos death, the tester's screenshot showed the original skin skydiving with 100 health, 100 shield, restored weapons/consumables and retained materials. The server log recorded gadget removal and new possession without a crash.
 - Solo reassignment succeeded in that same session: the native log records initial gadget application at 00:34:49, removal/new possession at 00:35:29 and successful application again at 00:36:09 (Europe/Zurich). The 20-second landing threshold is verified by native rules tests; the manual observation was not a frame-accurate timing measurement.
-- Follow-up defect: the tester reported stretched proportions on the restored normal skin. The earlier appearance observation covers skin visibility only, not correct proportions. A source fix now saves/restores the original body type, gender, all six part slots and animation override; its native build and manual verification are pending. The pinned DLL and local EXEs above still have this defect.
-- Follow-up bus defect: early jumping and delayed arena activation were reported. The source now initializes the zone at departure and uses a guarded native jump path. Added native assertions cover missing arena/configuration, non-passengers, the drop-start boundary, invalid time and end-of-route ejection. Native build and game verification are pending.
-- Rejected intermediate build `ba9e4e4`: the bus-start playtest crashed before zone creation (access violation reading the indicator's `NextCenter` at null + `0x348`). This build must not be released. The direct phase initialization was removed; the follow-up uses the native `StartsWithAirCraft` playlist setting and refuses phase initialization without an indicator. A fresh native build and game check are required.
+- Follow-up appearance fix in `92773e4`: restores original body type, gender, all six part slots and animation override. The tester confirmed normal body proportions after Thanos death; the earlier skin-visibility result alone did not establish correct proportions.
+- Follow-up bus fix in `92773e4`: uses the native `StartsWithAirCraft` zone startup and a guarded native jump path. Bus startup and the subsequent Thanos death completed without a crash, but the tester reported a missing storm wall with only the white minimap circle. This candidate is not ready for publication. Native assertions cover missing arena/configuration, non-passengers, the drop-start boundary, invalid time and end-of-route ejection.
+- Zone lifecycle repair in `bda98ce`: completes native initialization once after Aircraft, with a valid indicator, and repairs native resets of the fixed geometry, timestamps and preview pause state. Native rules cover both lifecycle stages and preserving the captured radius. The final solo playtest used the verified DLL hash listed above. The tester confirmed the blue storm wall both before and after leaving the bus. Native logs recorded stage 1 at 01:21:17 and stage 2 at 01:21:34 (Europe/Zurich), with a 15000 cm radius in both stages. Read-only diagnostics after the transition showed the same game-state/mode indicator, active zone, paused mode progression, unpaused indicator/preview, all four radii at 15000 cm and matching fixed timestamps. A screenshot showed the purple storm and safe area on the minimap. Repeated early jump input was not separately measured manually; the countdown boundaries are covered by native assertions.
+- Rejected intermediate build `ba9e4e4`: the bus-start playtest crashed before zone creation (access violation reading the indicator's `NextCenter` at null + `0x348`). It is excluded from publication. The pinned DLL removes the premature direct phase call and refuses phase initialization without an indicator.
 - Multiplayer preference is covered by native rules tests; a real two-player match has not been performed.
+- The repository was renamed to `UniverseMan12/fortnite-4-2-launcher`. The old URL redirects correctly, the pinned native artifact downloads under the new name with the same verified digest, and `main` remains at `fd5384cfc8da2fc327e448ed77f84c8687835515`.
 
-The unsigned installer and portable build are local alpha artifacts. Clean-machine installation/uninstallation remains untested. The storm HUD still has the approximately 1439-minute cosmetic timer. See [INFINITY_SHOWDOWN.md](INFINITY_SHOWDOWN.md) for game behavior and limits.
+The installer and portable build are unsigned alpha artifacts. Clean-machine installation/uninstallation remains untested. The storm HUD still has the approximately 1439-minute cosmetic timer. See [INFINITY_SHOWDOWN.md](INFINITY_SHOWDOWN.md) for game behavior and limits.
 
 ## Historical stable release — 0.3.1
 

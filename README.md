@@ -1,16 +1,16 @@
-# Fortnite Backend
+# Fortnite 4.2 Launcher
 
 ## Infinity Showdown alpha
 
-The development branch adds **Classic / Infinity Showdown** to the launcher. The host can start a small late-game arena with a random Thanos, ten additional respawns per player, retained equipment and a starter kit with 999 materials/ammo. Friends join the host's VPN as before. See [the mode guide](INFINITY_SHOWDOWN.md) for setup, exact rules and in-game testing limits. This is experimental server code; the stable 0.3.1 release does not contain this mode.
+The **0.4.0-alpha.1 prerelease** adds **Classic / Infinity Showdown** to the launcher. The host can start a small late-game arena with a random Thanos, ten additional respawns per player, retained equipment and a starter kit with 999 materials/ammo. Friends join the host's VPN as before. See [the mode guide](INFINITY_SHOWDOWN.md) for setup, exact rules and in-game testing limits, and [release notes](RELEASE_NOTES.md) for changes. This is experimental server code; the stable 0.3.1 release does not contain this mode.
 
 A launcher for Fortnite 4.2, with local play and private VPN/LAN multiplayer using **LawinServer** and components from **Project Reboot**.
 
 ## Desktop launcher
 
-The **0.3.1 desktop launcher** brings a Thanos home screen, bold typography, animated session cards and a prominent **Launch Fortnite** button. Choose **Solo / Host / Join**, select your game folder, and let the launcher prepare its components. Setup, live activity, host IPs and **Stop session** remain easy to reach. Reduced-motion preferences are respected. Closing the launcher also stops its owned game processes. The existing CMD launchers remain available.
+The desktop launcher has a Thanos home screen, animated session cards and a prominent **Launch Fortnite** button. Choose **Solo / Host / Join**, select your game folder, and let the launcher prepare its components. Setup, live activity, host IPs and **Stop session** remain easy to reach. Reduced-motion preferences are respected. Closing the launcher also stops its owned game processes. The existing CMD launchers remain available.
 
-For the EXE build, choose **Fortnite-Launcher-0.3.1-x64-nsis.exe** to install, or **Fortnite-Launcher-0.3.1-x64-portable.exe** to run without installing. Check the [Releases page](https://github.com/UniverseMan12/fortnite-backend/releases) for published versions; build packages are also produced by the **Build desktop launcher** workflow.
+For this prerelease, choose **Fortnite-Launcher-0.4.0-alpha.1-x64-nsis.exe** to install, or **Fortnite-Launcher-0.4.0-alpha.1-x64-portable.exe** to run without installing. The [Releases page](https://github.com/UniverseMan12/fortnite-4-2-launcher/releases) also retains stable **v0.3.1**; build packages are produced by the **Build desktop launcher** workflow.
 
 1. Open the launcher and select **Setup → Browse folder**. Choose the folder containing FortniteGame and Engine.
 2. Choose **Solo**, **Host**, or **Join**. Join also needs the host's VPN/LAN IPv4 address.
@@ -31,7 +31,7 @@ For the **source/CMD launchers**, use a **Windows 10/11 x64** PC with internet a
 | **[Git for Windows](https://git-scm.com/install/windows)** | **x64 Setup**. Keep Git available from the command line; the launcher uses it to download the backend. |
 | **[Microsoft Visual C++ Runtime — x64](https://aka.ms/vc14/vc_redist.x64.exe)** | Run the installer and choose Install or Repair if needed. [Microsoft download information](https://learn.microsoft.com/en-us/cpp/windows/latest-supported-vc-redist). |
 | **[Fortnite 4.2 — Google Drive](https://drive.google.com/file/d/1m8VEUcKnxA0UYHt5-txPbRhfbn0OVhEm/view?usp=sharing)** | Download and fully extract the game. Link supplied by the project owner. |
-| **[Launcher — Download ZIP](https://github.com/UniverseMan12/fortnite-backend/archive/refs/heads/main.zip)** | Extract the ZIP, then open the folder containing **START.cmd**. |
+| **[Launcher — Download ZIP](https://github.com/UniverseMan12/fortnite-4-2-launcher/archive/refs/heads/main.zip)** | Extract the ZIP, then open the folder containing **START.cmd**. |
 | [Hamachi](https://vpn.net/) — for multiplayer over the internet | Install on every player's PC and join the same private network. An existing Radmin VPN connection or the same LAN also works with the launcher. |
 | [7-Zip](https://www.7-zip.org/download.html) — optional | Choose **64-bit Windows x64** if you need an extractor for the game archive. |
 | [DirectX legacy runtime](https://www.microsoft.com/en-us/download/details.aspx?id=35) — if needed | Install if the game reports missing legacy DirectX files such as **XINPUT1_3.dll** or **D3DX9_43.dll**. |

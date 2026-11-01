@@ -9,8 +9,8 @@ export function validateOptions(value) {
 }
 
 export const links = Object.freeze({
-  github: 'https://github.com/UniverseMan12/fortnite-backend',
-  releases: 'https://github.com/UniverseMan12/fortnite-backend/releases',
+  github: 'https://github.com/UniverseMan12/fortnite-4-2-launcher',
+  releases: 'https://github.com/UniverseMan12/fortnite-4-2-launcher/releases',
   hamachi: 'https://vpn.net/',
   runtime: 'https://aka.ms/vc14/vc_redist.x64.exe',
   game: 'https://drive.google.com/file/d/1m8VEUcKnxA0UYHt5-txPbRhfbn0OVhEm/view?usp=sharing'
