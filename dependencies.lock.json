@@ -5,10 +5,11 @@
                 },
     "launcherCommit":  "c6f82298b167ef2076bb59dc621f13dc5bd8d390",
     "gameServerCommit":  "10c659028ad9d6816f78226483f11a884bf81f57",
-    "gameServerBuildCommit":  "1562a467694f98444c16ee2284a1eff5057f2b81",
-    "gameServerArchive":  "https://nightly.link/UniverseMan12/fortnite-4-2-launcher/actions/artifacts/13091703062.zip",
-    "gameServerArchiveSha256":  "fd86ea05f7e049369911179bc0af6fa78ac96872d42ae49f58f23ea67dedbc45",
+    "gameServerBuildCommit":  "9adc2c19475ebd347fabf933123a94269e462dea",
+    "gameServerArchive":  "https://nightly.link/UniverseMan12/Nova_launcher_4.2/actions/artifacts/13093959342.zip",
+    "gameServerArchiveSha256":  "6c71938b600bf889042cc95464bc4eed0b3255dab905745cf11006995a1f7656",
     "previousGameServerSha256s":  [
+                                      "ea242ca57d74ebb0d39cbabba71ef5ba58787b828da39455904fc57afe70cef2",
                                       "7b825bfa081151b58db35414e835b9c92fa296e192f934dbe500fb099b1faf9a",
                                       "8db85724388c33c5ca090cda8a0cc7c4a0be4247ced08498569ec5c359a85a8e",
                                       "3f97ac64bca54fa758e768df17e054cb3be0e303ae97eba32c636738ad01f21a",
@@ -29,6 +30,6 @@
                  "sinum.dll":  "fb69e9ee715f5cbbdadd0e8e3cb07ee37b9dc1ac41f8ea04ebee66e4f7026f72",
                  "console.dll":  "a4873bd206a1bbf05eea868d28f4850942fed8eb55a465ecc05604c5bc9c43c7",
                  "memory.dll":  "09678b68e73eeb4463e3b442e0982eba7ff08b07df0614b12a02ed4c9f17fb7a",
-                 "reboot.dll":  "ea242ca57d74ebb0d39cbabba71ef5ba58787b828da39455904fc57afe70cef2"
+                 "reboot.dll":  "eaff4a7842ea14a4ab9f05cbc0f4e55c2f481330006d4578a373b77b4880f41d"
              }
 }

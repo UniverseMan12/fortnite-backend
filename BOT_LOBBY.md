@@ -21,4 +21,6 @@ This adds basic server-controlled combat opponents to **Classic** and ordinary *
 
 Compilation and rules tests cannot establish that Fortnite 4.2's native movement and firing work for a controller without a connected player. This must be checked in game before calling the bot lobby ready or publishing it as a regular release.
 
+[Native build 41333077696](https://github.com/UniverseMan12/Nova_launcher_4.2/actions/runs/41333077696) passed compilation, bot combat rules and Infinity Showdown rules from `9adc2c19475ebd347fabf933123a94269e462dea`. Artifact `13093959342` matched GitHub's archive checksum; its DLL matched the included checksum and the updated dependency pin. All 45 Node regression tests passed. No in-game bot playtest has been performed yet.
+
 With three bots, check that they appear after landing, move, visibly fire and actually damage you; check that killing a bot reduces the count and that Classic/Thanos both work. Also check that selecting Infinity Showdown produces zero bots. The assistant does not operate the owner's game for this test.
