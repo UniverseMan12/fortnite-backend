@@ -41,8 +41,8 @@ namespace BotLobby {
     static bool Spawn(AFortGameModeAthena* mode, AFortGameStateAthena* game, FVector location) {
         auto controllerClass = AFortPlayerControllerAthena::StaticClass();
         auto pawnClass = FindObject<UClass>(L"/Game/Athena/PlayerPawn_Athena.PlayerPawn_Athena_C");
-        auto rifle = FindObject<UFortWeaponItemDefinition>(L"/Game/Athena/Items/Weapons/WID_Assault_Auto_Athena_R_Ore_T03.WID_Assault_Auto_Athena_R_Ore_T03");
-        auto ammo = FindObject<UFortItemDefinition>(L"/Game/Athena/Items/Ammo/AmmoDataBulletsMedium.AmmoDataBulletsMedium");
+        auto rifle = FindObject<UFortWeaponItemDefinition>("WID_Assault_Auto_Athena_R_Ore_T03", nullptr, ANY_PACKAGE);
+        auto ammo = FindObject<UFortItemDefinition>("AthenaAmmoDataBulletsMedium", nullptr, ANY_PACKAGE);
         if (!controllerClass || !pawnClass || !rifle || !ammo) return false;
         auto controller = GetWorld()->SpawnActor<AFortPlayerControllerAthena>(controllerClass);
         if (!controller) return false;
@@ -71,7 +71,7 @@ namespace BotLobby {
         controller->ServerChangeName(name.c_str()); state->OnRep_PlayerName();
         PlayerBot setup; setup.Controller = controller; setup.Pawn = pawn; setup.PlayerState = state;
         setup.SetupInventory();
-        if (!controllerRef.Get() || !pawnRef.Get()) return abort();
+        if (!controllerRef.Get() || !pawnRef.Get() || controller->IsActorBeingDestroyed() || pawn->IsActorBeingDestroyed()) return abort();
         auto inventory = controller->GetWorldInventory(); if (!inventory) return abort();
         auto abilities = GetPlayerAbilitySet(); auto asc = state->GetAbilitySystemComponent();
         if (!abilities || !asc) return abort();
@@ -100,6 +100,7 @@ namespace BotLobby {
         if (!RequestedForRound || InfinityShowdown::Enabled.load()) return;
         double now = game->GetServerWorldTimeSeconds(); if (now < NextTick) return; NextTick = now + .1;
         std::vector<AFortPlayerPawn*> humans;
+        std::vector<AFortPlayerPawn*> landed;
         const bool playing = game->GetGamePhase() == EAthenaGamePhase::SafeZones;
         auto& connections = driver->GetClientConnections();
         if (playing && !Faulted) for (int i = 0; i < connections.Num(); ++i) {
@@ -107,11 +108,14 @@ namespace BotLobby {
             auto controller = Cast<AFortPlayerControllerAthena>(connection->GetPlayerController());
             auto pawn = controller ? controller->GetMyFortPawn() : nullptr;
             auto state = controller ? Cast<AFortPlayerStateAthena>(controller->GetPlayerState()) : nullptr;
-            if (Living(pawn) && state && !state->IsInAircraft() && InfinityShowdown::OnGround(pawn)) humans.push_back(pawn);
+            if (Living(pawn) && state && !state->IsInAircraft()) {
+                humans.push_back(pawn);
+                if (InfinityShowdown::OnGround(pawn)) landed.push_back(pawn);
+            }
         }
-        if (playing && !Faulted && Spawned < RequestedForRound && !humans.empty() && now >= NextSpawn) {
+        if (playing && !Faulted && Spawned < RequestedForRound && !landed.empty() && now >= NextSpawn) {
             NextSpawn = now + 1;
-            auto location = humans[Spawned % humans.size()]->GetActorLocation();
+            auto location = landed[Spawned % landed.size()]->GetActorLocation();
             float angle = std::uniform_real_distribution<float>(0,6.2831853f)(Random);
             location.X += std::cos(angle)*3500; location.Y += std::sin(angle)*3500;
             if (!InfinityShowdown::GroundAt(location) || !Spawn(mode,game,location)) {
