@@ -9,7 +9,7 @@ test.beforeEach(async () => {
   const env = { ...process.env, LAUNCHER_TEST_DATA: userData }; delete env.ELECTRON_RUN_AS_NODE;
   app = await electron.launch({ args: ['.'], env });
   page = await app.firstWindow();
-  await expect(page.locator('#app-version')).toHaveText('0.4.0-alpha.3');
+  await expect(page.locator('#app-version')).toHaveText('0.4.0-alpha.4');
 });
 test.afterEach(async () => { await app?.close(); fs.rmSync(userData, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 }); });
 
@@ -115,6 +115,43 @@ test('startup finishes without blocking controls and reduced motion skips it', a
   await page.reload();
   await expect(page.locator('#startup')).toBeHidden();
   await expect(page.locator('.brand img')).toHaveJSProperty('complete',true);
+});
+
+test('game download uses a native folder picker and preserves the current game on failure', async () => {
+  await page.locator('[data-page="setup"]').click();
+  await page.locator('#game-path').fill('C:/Existing Fortnite');
+  await expect.poll(()=>JSON.parse(fs.readFileSync(path.join(userData,'settings.json'),'utf8')).gamePath).toBe('C:/Existing Fortnite');
+  await app.evaluate(({dialog})=>{dialog.showOpenDialog=async()=>({canceled:true,filePaths:[]});});
+  await page.locator('#download-game').click();
+  await expect(page.locator('#download-game')).toBeEnabled();
+  await expect(page.locator('#game-path')).toHaveValue('C:/Existing Fortnite');
+  const folder=path.join(userData,'download-target');fs.mkdirSync(path.join(folder,'Fortnite-4.2'),{recursive:true});
+  fs.writeFileSync(path.join(folder,'Fortnite-4.2','keep.txt'),'keep');
+  await app.evaluate(({dialog},folder)=>{dialog.showOpenDialog=async()=>({canceled:false,filePaths:[folder]});},folder);
+  await page.locator('#download-game').click();
+  await expect(page.locator('#error-banner')).toContainText('already exists',{timeout:30000});
+  await expect(page.locator('#download-game')).toBeEnabled();
+  expect(fs.readFileSync(path.join(folder,'Fortnite-4.2','keep.txt'),'utf8')).toBe('keep');
+  expect(JSON.parse(fs.readFileSync(path.join(userData,'settings.json'),'utf8')).gamePath).toBe('C:/Existing Fortnite');
+  const bypass=await page.evaluate(()=>window.launcher.start('download',{mode:'solo',gamePath:'C:/arbitrary'}).catch(e=>e.message));
+  expect(bypass).toContain('Unknown action');
+});
+
+test('game download progress, cancellation and installed-folder feedback stay usable', async () => {
+  await page.locator('[data-page="setup"]').click();
+  await page.emulateMedia({reducedMotion:'reduce'});
+  const state={busy:true,action:'download',phase:'download',message:'Downloading Fortnite 4.2',events:[],addresses:[],progress:{stage:'downloading',received:1024**3,total:8*1024**3}};
+  await app.evaluate(({BrowserWindow},state)=>BrowserWindow.getAllWindows()[0].webContents.send('launcher:state',state),state);
+  await expect(page.locator('#download-bar')).toHaveJSProperty('value',12.5);
+  await expect(page.locator('#download-info')).toContainText('1.00 / 8.00 GiB');
+  await expect(page.locator('#cancel-download')).toBeVisible();
+  await expect(page.locator('#download-game')).toBeDisabled();
+  await page.screenshot({path:'test-results/game-download-progress.png'});
+  const done={...state,busy:false,phase:'complete',message:'Fortnite 4.2 installed. Return to Play and launch.',installedPath:'C:/Games/Fortnite-4.2',progress:{stage:'checking',received:0,total:0}};
+  await app.evaluate(({BrowserWindow},state)=>BrowserWindow.getAllWindows()[0].webContents.send('launcher:state',state),done);
+  await expect(page.locator('#game-path')).toHaveValue('C:/Games/Fortnite-4.2');
+  await expect(page.locator('#cancel-download')).toBeHidden();
+  await expect(page.locator('#download-info')).toContainText('installed');
 });
 
 test('startup guidance retains the useful next action and clears expired invites', async () => {

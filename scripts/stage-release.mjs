@@ -7,9 +7,11 @@ import { setup, lock, verifyDll } from './setup.js';
 import { patchBackend } from './patch-backend.js';
 import './create-icon.mjs';
 import { installBackendManifest } from './backend-dependencies.js';
+import { prepareExtractor } from './prepare-extractor.mjs';
 
 if (process.platform !== 'win32') throw new Error('Build the Windows release on Windows.');
 await setup();
+const extractor = await prepareExtractor();
 const build = path.join(ROOT, 'build'), destination = path.join(build, 'payload');
 fs.mkdirSync(build, { recursive: true });
 // Only remove this build's generated payload; never resolve a user-supplied path.
@@ -20,7 +22,7 @@ for (const name of ['src', 'scripts']) fs.mkdirSync(path.join(destination, name)
 for (const name of fs.readdirSync(path.join(ROOT, 'src'))) fs.copyFileSync(path.join(ROOT, 'src', name), path.join(destination, 'src', name));
 for (const name of ['setup.js', 'download.js', 'patch-backend.js', 'backend-dependencies.js', 'launch-game.ps1', 'extract-server.ps1']) fs.copyFileSync(path.join(ROOT, 'scripts', name), path.join(destination, 'scripts', name));
 fs.cpSync(path.join(ROOT, 'scripts', 'backend-dependencies'), path.join(destination, 'scripts', 'backend-dependencies'), { recursive: true, filter: source => path.basename(source) !== 'node_modules' });
-for (const name of ['dependencies.lock.json', 'THIRD_PARTY.md', 'README.md']) fs.copyFileSync(path.join(ROOT, name), path.join(destination, name));
+for (const name of ['dependencies.lock.json', 'game-download.json', 'THIRD_PARTY.md', 'README.md']) fs.copyFileSync(path.join(ROOT, name), path.join(destination, name));
 fs.writeFileSync(path.join(destination, 'package.json'), JSON.stringify({ name: 'fortnite-launcher-runtime', private: true, type: 'module' }));
 const backend = path.join(destination, 'vendor', 'LawinServer');
 fs.mkdirSync(path.dirname(backend), { recursive: true });
@@ -34,6 +36,8 @@ execFileSync('cmd.exe', ['/d', '/c', 'npm.cmd ci --ignore-scripts --no-audit --n
 patchBackend(backend);
 fs.writeFileSync(path.join(backend, 'launcher-bundle.json'), JSON.stringify({ commit: lock.backend.commit }));
 fs.mkdirSync(path.join(destination, 'runtime'));
+fs.mkdirSync(path.join(destination,'runtime','7zip'));
+for (const name of ['7zr.exe','7zip-source.tar.xz','NOTICE.txt']) fs.copyFileSync(path.join(extractor,name),path.join(destination,'runtime','7zip',name));
 fs.copyFileSync(verifyDll('reboot.dll'), path.join(destination, 'runtime', 'reboot.dll'));
 fs.copyFileSync(path.join(ROOT, 'runtime', 'REBOOT-LICENSE.txt'), path.join(destination, 'runtime', 'REBOOT-LICENSE.txt'));
 // Other upstream DLLs are fetched directly from their pinned sources on first use.

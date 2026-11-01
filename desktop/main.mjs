@@ -10,7 +10,8 @@ const directory = path.dirname(fileURLToPath(import.meta.url));
 const uiURL = pathToFileURL(path.join(directory, 'ui', 'index.html')).href;
 app.setPath('userData', process.env.LAUNCHER_TEST_DATA || path.join(app.getPath('appData'), 'FortniteLauncher'));
 let window, worker, workspace = path.resolve(directory, '..'), closing = false, finished = Promise.resolve();
-const state = { busy: false, phase: 'idle', message: 'Ready when you are.', events: [], addresses: [], version: app.getVersion() };
+let choosingDownloadFolder = false;
+const state = { busy: false, phase: 'idle', message: 'Ready when you are.', events: [], addresses: [], progress: null, installedPath: null, version: app.getVersion() };
 const settingsPath = () => path.join(app.getPath('userData'), 'settings.json');
 function settings() {
   try { return normalizeSettings(JSON.parse(fs.readFileSync(settingsPath(), 'utf8'))); } catch {}
@@ -20,6 +21,7 @@ function settings() {
   return { mode: 'solo', gamePath: '', host: '' };
 }
 function emit(event) {
+  if (event.type === 'download-progress') state.progress = event.progress;
   if (event.type === 'status' || event.type === 'failure') {
     state.message = event.message;
     state.events.push({ ...event, time: new Date().toISOString() });
@@ -28,26 +30,27 @@ function emit(event) {
   }
   if (event.type === 'addresses') state.addresses = event.addresses;
   if (event.type === 'workspace') workspace = event.root;
-  if (event.type === 'config') {
+  if (event.type === 'config' || event.type === 'installed') {
     const saved = settings(); saved.gamePath = event.gamePath;
     fs.writeFileSync(settingsPath(), JSON.stringify(saved));
+    if (event.type === 'installed') state.installedPath = event.gamePath;
   }
-  if (event.type === 'done') { state.addresses = []; state.phase = event.cancelled ? 'idle' : 'complete'; state.message = event.cancelled ? 'Session stopped.' : 'All done. Ready for your next drop.'; }
+  if (event.type === 'done') { state.addresses = []; state.phase = event.cancelled ? 'idle' : 'complete'; state.message = state.action === 'download' ? event.cancelled ? 'Installation cancelled. Choose the same location to resume the download.' : 'Fortnite 4.2 installed. Return to Play and launch.' : event.cancelled ? 'Session stopped.' : 'All done. Ready for your next drop.'; }
   if (window && !window.isDestroyed()) window.webContents.send('launcher:state', structuredClone(state));
 }
 async function stop() {
-  if (worker?.connected) { state.phase = 'stopping'; emit({ type: 'status', message: 'Stopping your session...', state: 'pending' }); worker.send({ type: 'stop' }); }
+  if (worker?.connected) { state.phase = 'stopping'; emit({ type: 'status', message: state.action === 'download' ? 'Stopping the installation...' : 'Stopping your session...', state: 'pending' }); worker.send({ type: 'stop' }); }
   await finished;
 }
-function start(action, input) {
+function start(action, input, allowDownload = false) {
   if (state.busy) throw new Error('A session is already running. Stop it before starting another.');
-  if (!['launch', 'check', 'prepare'].includes(action)) throw new Error('Unknown action.');
+  if (!['launch', 'check', 'prepare'].includes(action) && !(allowDownload && action === 'download')) throw new Error('Unknown action.');
   const options = validateOptions(input);
   fs.mkdirSync(app.getPath('userData'), { recursive: true });
   const previous = settings();
   const playerName = /^Player_[a-f0-9]{12}$/.test(previous.multiplayerName ?? '') ? previous.multiplayerName : `Player_${randomBytes(6).toString('hex')}`;
-  fs.writeFileSync(settingsPath(), JSON.stringify({ ...options, multiplayerName: playerName }));
-  state.busy = true; state.phase = action; state.events = []; state.addresses = [];
+  fs.writeFileSync(settingsPath(), JSON.stringify({ ...(action === 'download' ? previous : options), multiplayerName: playerName }));
+  state.busy = true; state.phase = action; state.action = action; state.events = []; state.addresses = []; state.progress = null; state.installedPath = null;
   emit({ type: 'status', message: 'Getting things ready...', state: 'pending' });
   const logPath = path.join(app.getPath('userData'), 'launcher.log');
   const log = fs.createWriteStream(logPath, { flags: 'a' });
@@ -91,7 +94,16 @@ else {
     const result = await dialog.showOpenDialog(window, { title: 'Select the folder containing FortniteGame and Engine', properties: ['openDirectory'] });
     return result.canceled ? null : result.filePaths[0];
   });
-  handle('start', start);
+  handle('start', (action,input) => start(action,input));
+  handle('downloadGame', async () => {
+    if (state.busy || choosingDownloadFolder) throw new Error('Finish the current action before downloading the game.');
+    choosingDownloadFolder = true;
+    try {
+      const result = await dialog.showOpenDialog(window,{title:'Choose where to create Fortnite-4.2 (about 32 GiB free required)',properties:['openDirectory','createDirectory']});
+      if (result.canceled) return false;
+      return start('download',{...settings(),mode:settings().mode || 'solo',gamePath:result.filePaths[0]},true);
+    } finally { choosingDownloadFolder = false; }
+  });
   handle('stop', stop);
   handle('saveSettings', input => {
     if (state.busy) return false;

@@ -23,6 +23,25 @@ process.on('message', async message => {
     }
     send({ type: 'workspace', root });
     const module = name => import(pathToFileURL(path.join(root, name)).href);
+    if (message.action === 'download') {
+      if (!message.payload) {
+        const {prepareExtractor} = await module('scripts/prepare-extractor.mjs');
+        await prepareExtractor({signal:controller.signal});
+      }
+      const { installGame } = await module('src/game-install.js');
+      let lastUpdate = 0, lastStage;
+      status('Downloading Fortnite 4.2. You can cancel and resume in the same location.', 'pending');
+      const gamePath = await installGame(options.gamePath,{signal:controller.signal,progress:value=>{
+        const now = Date.now();
+        if (value.stage !== lastStage || now-lastUpdate >= 200 || value.received === value.total) {
+          send({type:'download-progress',progress:value}); lastUpdate = now; lastStage = value.stage;
+        }
+      }});
+      send({type:'installed',gamePath});
+      status('Fortnite 4.2 installed and selected. Return to Play.', 'ok');
+      send({type:'done',cancelled:false});
+      return;
+    }
     const { prepareConfig, readConfig, saveConfig } = await module('src/config.js');
     const { parseJoinTarget, multiplayerName, hostAddresses } = await module('src/multiplayer.js');
     const { setup, verifyDll } = await module('scripts/setup.js');

@@ -9,6 +9,7 @@ on:
       - 'package.json'
       - 'package-lock.json'
       - 'dependencies.lock.json'
+      - 'game-download.json'
       - '.github/workflows/build-launcher.yml'
 permissions:
   contents: read
@@ -24,13 +25,14 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run setup
+      - run: node scripts/prepare-extractor.mjs
       - run: npm run package:release
       - run: node scripts/smoke-release.mjs
       - run: node scripts/smoke-portable.mjs
       - run: node scripts/release-files.mjs
       - uses: actions/upload-artifact@v4
         with:
-          name: Fortnite-Launcher-0.4.0-alpha.3-Windows-x64
+          name: Fortnite-Launcher-0.4.0-alpha.4-Windows-x64
           path: |
             dist/*.exe
             dist/SHA256SUMS.txt

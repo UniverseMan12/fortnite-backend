@@ -1,4 +1,16 @@
-# Fortnite Launcher 0.4.0-alpha.3
+# Fortnite Launcher 0.4.0-alpha.4 — development preview
+
+## New: download Fortnite 4.2 in the launcher
+
+- Settings → **Download Fortnite 4.2** opens a native folder picker. The launcher downloads the 8.3 GiB archive, checks its pinned SHA-256, unpacks the game and selects the finished folder.
+- Download progress, retry/resume after interruption and cancellation are built in. Choose the same location to resume; an interrupted extraction can reuse the verified archive.
+- About 32 GiB free space is required while installing. Existing folders are not overwritten. Only the actual Fortnite game subtree is extracted; the archive's extra Epic launcher installers are excluded.
+- The separate, pinned 7-Zip extractor and upstream source are bundled. Game files remain a separate download; no Google login or external extraction application is needed.
+- Google Drive quota/sharing failures are reported with a retry or existing-folder fallback. This feature supports 4.2 / CL-4072250 only.
+
+This preview has not been published as a GitHub release.
+
+## Previous release: 0.4.0-alpha.3
 
 Three game modes in one Windows launcher for Fortnite 4.2: **Classic**, **Thanos** and **Infinity Showdown**. This is an experimental prerelease; v0.3.1 remains stable.
 

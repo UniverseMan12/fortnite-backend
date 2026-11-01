@@ -1,0 +1,11 @@
+7-Zip reduced standalone console (7zr.exe), version 26.05, 2026-10-21
+Igor Pavlov — https://www.7-zip.org/
+
+The bundled 7zr executable identifies its license as Public domain. It is
+distributed unchanged from the official ip7z/7zip release. The complete upstream
+source archive is included as 7zip-source.tar.xz. That archive also contains the
+upstream readme, license information and copying.txt for other 7-Zip components.
+
+Binary: https://github.com/ip7z/7zip/releases/download/26.05/7zr.exe
+Source: https://github.com/ip7z/7zip/releases/download/26.05/7z2605-src.tar.xz
+This launcher uses 7zr as a separate process to unpack the selected game archive.

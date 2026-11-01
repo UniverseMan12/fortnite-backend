@@ -1,5 +1,6 @@
 const $ = id => document.getElementById(id);
 let mode = 'solo', busy = false, gameMode = 'classic', latestState, initialized = false;
+let displayedInstall;
 function saveSettings() {
   if (initialized && !busy) return safely(() => window.launcher.saveSettings({mode, gameMode, gamePath:$('game-path').value, host:$('host-address').value}));
 }
@@ -68,8 +69,26 @@ async function safely(action) { try { return await action(); } catch (error) { s
 function render(state) {
   latestState = state;
   busy = state.busy;
+  if (state.installedPath && state.installedPath !== displayedInstall) {
+    displayedInstall = state.installedPath; $('game-path').value = state.installedPath; updateFolder();
+  }
   renderRules();
-  for (const el of document.querySelectorAll('.mode, #game-path, #host-address, #browse, #check, #prepare, #launch, #edit-folder')) el.disabled = busy;
+  for (const el of document.querySelectorAll('.mode, #game-path, #host-address, #browse, #check, #prepare, #launch, #edit-folder, #download-game')) el.disabled = busy;
+  $('cancel-download').hidden = !(busy && state.action === 'download');
+  $('cancel-download').disabled = state.phase === 'stopping';
+  $('download-progress').hidden = state.action !== 'download';
+  const transfer = state.progress;
+  const labels = {downloading:'Downloading',retrying:'Connection interrupted — resuming',verifying:'Checking download',inspecting:'Checking archive',extracting:'Unpacking game',checking:'Verifying Fortnite 4.2'};
+  if (transfer && transfer.total > 0) {
+    const percent = Math.min(100,Math.max(0,transfer.received / transfer.total * 100));
+    $('download-bar').value = percent;
+    const amount = transfer.stage === 'extracting' ? '' : ` · ${(transfer.received/1024**3).toFixed(2)} / ${(transfer.total/1024**3).toFixed(2)} GiB`;
+    $('download-info').textContent = busy ? `${labels[transfer.stage] || 'Installing'} · ${percent.toFixed(1)}%${amount}` : state.message;
+  } else {
+    $('download-bar').removeAttribute('value');
+    $('download-info').textContent = transfer && busy ? labels[transfer.stage] || 'Installing...' : state.message;
+  }
+  if (state.phase === 'stopping') $('download-info').textContent = state.message;
   $('launch').hidden = busy; $('stop').hidden = !busy; $('stop').disabled = state.phase === 'stopping';
   const gameReady = state.events.some(event => event.message?.startsWith('Fortnite ready.'));
   $('top-status').textContent = state.phase === 'error' ? 'NEEDS ATTENTION' : state.phase === 'stopping' ? 'STOPPING' : busy ? gameReady ? 'IN SESSION' : 'GETTING READY' : 'READY';
@@ -128,6 +147,11 @@ $('host-address').oninput = saveSettings;
 $('browse').onclick = () => safely(async () => { const selected = await window.launcher.browse(); if (selected) { $('game-path').value = selected; updateFolder(); } });
 for (const [button, action] of [['launch','launch'], ['check','check'], ['prepare','prepare']]) $(button).onclick = () => safely(() => start(action));
 $('stop').onclick = () => safely(() => window.launcher.stop());
+$('cancel-download').onclick = () => safely(() => window.launcher.stop());
+$('download-game').onclick = () => safely(async () => {
+  $('error-banner').hidden = true;
+  await window.launcher.downloadGame();
+});
 $('open-logs').onclick = () => safely(() => window.launcher.logs());
 $('minimize').onclick = () => safely(() => window.launcher.minimize());
 $('close').onclick = () => safely(() => window.launcher.close());

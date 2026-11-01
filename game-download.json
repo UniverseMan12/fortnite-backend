@@ -1,0 +1,15 @@
+{
+  "version": "4.2",
+  "changelist": "4072250",
+  "url": "https://drive.usercontent.google.com/download?id=1m8VEUcKnxA0UYHt5-txPbRhfbn0OVhEm&export=download&confirm=t",
+  "size": 8946548760,
+  "sha256": "d89a92ed1e4038627aa8bf0c0985c7eb16eab033a194c0f66c38f90285c8de4c",
+  "unpackedBytes": 24091769351,
+  "extractor": {
+    "version": "26.05",
+    "url": "https://github.com/ip7z/7zip/releases/download/26.05/7zr.exe",
+    "sha256": "9bf582b894dfa665f852d7e9112b02290a1c303c2d95a21fcdc41ffcb03143b7",
+    "sourceUrl": "https://github.com/ip7z/7zip/releases/download/26.05/7z2605-src.tar.xz",
+    "sourceSha256": "0b6080b8c3e7a579161d2d495224c0e51c467576cb4c7048b0ab485ef44cc22e"
+  }
+}

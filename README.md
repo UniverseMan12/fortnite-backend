@@ -2,7 +2,15 @@
 
 ![Fortnite 4.2 Launcher with Classic, Thanos and Infinity Showdown](docs/launcher-preview.png)
 
-*Preview of the upcoming 0.4.0-alpha.3 launcher. The latest published preview is [0.4.0-alpha.2](https://github.com/UniverseMan12/fortnite-4-2-launcher/releases/tag/v0.4.0-alpha.2).*
+*The screenshot shows the three-mode launcher. The latest published preview is [0.4.0-alpha.3](https://github.com/UniverseMan12/fortnite-4-2-launcher/releases/tag/v0.4.0-alpha.3). This branch adds in-launcher game installation for the upcoming alpha.4.*
+
+## Download the game in the launcher
+
+In **Settings**, click **Download Fortnite 4.2** and choose an installation location. The launcher downloads the owner-provided 8.3 GiB archive, verifies its pinned SHA-256 checksum, extracts only the game files and selects the finished **Fortnite-4.2** folder. Allow about **32 GiB free space** during installation; the downloaded archive is removed after success.
+
+You can cancel at any stage. Choose the same location to resume the downloaded bytes; interrupted extraction starts again from the verified archive. Existing installations are never overwritten. If Google Drive's quota or sharing prevents downloading, retry later or select your existing game folder. No Google login, Git, Node.js or separate 7-Zip installation is required by the EXE.
+
+The built-in download targets **4.2 / CL-4072250** only. It does not install or run the extra Epic launcher/redistributable installers found in the source archive. The Visual C++ x64 runtime is still a separate prerequisite.
 
 ## Three game modes
 
