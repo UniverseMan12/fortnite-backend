@@ -35,6 +35,13 @@ export function patchInfinity(root) {
     ['auto Pawn = Cast<AFortPlayerPawn>(Pickup->GetPickupLocationData()->GetPickupTarget());',
      'auto Pawn = Cast<AFortPlayerPawn>(Pickup->GetPickupLocationData()->GetPickupTarget());\n\tif (InfinityShowdown::HandlePickup(Pawn, Pickup)) return 0;']
   ]);
+  edit('FortAthenaSupplyDrop.cpp', [
+    ['#include "FortAthenaSupplyDrop.h"', '#include "FortAthenaSupplyDrop.h"\n#include "InfinityShowdown.h"'],
+    ['\tSpawnGameModePickupOriginal(Context, Stack, Ret);',
+     '\tif (InfinityShowdown::HandleMeteorLoot(Context, ItemDefinition, Position, Ret)) {\n\t\tif (Stack.Code) ++Stack.Code; // P_FINISH: consume EX_EndFunctionParms.\n\t\treturn Ret ? *Ret : nullptr;\n\t}\n\tSpawnGameModePickupOriginal(Context, Stack, Ret);'],
+    ['\tSpawnPickupOriginal(Context, Stack, Ret);',
+     '\tif (InfinityShowdown::HandleMeteorLoot(Context, ItemDefinition, Position, Ret)) {\n\t\tif (Stack.Code) ++Stack.Code; // P_FINISH: consume EX_EndFunctionParms.\n\t\treturn Ret ? *Ret : nullptr;\n\t}\n\tSpawnPickupOriginal(Context, Stack, Ret);']
+  ]);
   edit('FortPlayerController.cpp', [
     ['#include "LocalTools.h"','#include "LocalTools.h"\n#include "InfinityShowdown.h"'],
     ['\tif (Engine_Version < 424 && !Globals::bLateGame.load())',

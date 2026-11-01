@@ -8,8 +8,7 @@
 // Engine-independent rules. A life token identifies a pawn, not a death callback.
 namespace InfinityRules {
     constexpr int RespawnLimit = 10;
-    constexpr double GauntletDelay = 20.0, GauntletFallTime = 6.0;
-    constexpr float GauntletHeight = 20000.f;
+    constexpr double GauntletDelay = 20.0;
     constexpr float ThanosHealth = 500.f, ThanosShield = 200.f;
     enum class GauntletPhase { Waiting, Falling, Available, Held };
     struct GauntletCycle {

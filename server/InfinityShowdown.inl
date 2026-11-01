@@ -1,6 +1,8 @@
 // Included after LocalTools.inl in NetDriver.cpp. All mutations run on the game thread.
 #include "InfinityShowdown.h"
 #include "InfinityRules.h"
+#include "FortAthenaSupplyDrop.h"
+#include "GameplayStatics.h"
 #include <unordered_map>
 #include <random>
 #include <cmath>
@@ -41,6 +43,9 @@ namespace InfinityShowdown {
     static std::string Thanos;
     static InfinityRules::GauntletCycle GauntletState;
     static Ref WorldGauntlet;
+    static Ref GauntletMeteor;
+    struct RetiredActor { Ref actor; double destroyAt; };
+    static std::vector<RetiredActor> RetiredActors;
     static FVector GauntletLanding;
     static bool SkyDrop = true;
     static double FallStartedAt = 0;
@@ -426,15 +431,85 @@ namespace InfinityShowdown {
         GauntletState.Schedule(now, sky ? InfinityRules::GauntletDelay : 0);
         WorldGauntlet = {}; Thanos.clear();
     }
-    static void MoveGauntlet(AFortPickup* pickup, const FVector& location) {
-        // Keep native pickup interpolation and actor replication at the same point.
+    static AFortPickup* SpawnGroundGauntlet(const FVector& location) {
+        PickupCreateData data;
+        auto definition = Gauntlet(); if (!definition) return nullptr;
+        data.ItemEntry = FFortItemEntry::MakeItemEntry(definition,1,-1,MAX_DURABILITY);
+        if (!data.ItemEntry) return nullptr;
+        data.bShouldFreeItemEntryWhenDeconstructed = true; data.SpawnLocation = location;
+        data.SourceType = EFortPickupSourceTypeFlag::GetOtherValue(); data.bToss = false;
+        auto pickup = AFortPickup::SpawnPickup(data); if (!pickup) return nullptr;
+        pickup->SetNetDormancy(ENetDormancy::DORM_Awake);
+        pickup->ForceNetUpdate(); WorldGauntlet = Ref(pickup);
+        GauntletState.Spawned(false);
+        return pickup;
+    }
+    bool HandleMeteorLoot(UObject* source, UFortItemDefinition* definition, const FVector& location, AFortPickup** result) {
+        if (!Enabled.load() || !source) return false;
+        const bool current = source == GauntletMeteor.Get();
+        bool retired = false;
+        for (const auto& actor : RetiredActors) if (source == actor.actor.Get()) { retired = true; break; }
+        if (!current && !retired) return false;
+        // The meteor's native landing/loot event owns the timing. It may request
+        // loot more than once; never create a second collectible or another kit.
+        if (result) *result = nullptr;
+        if (!current || definition != Gauntlet() || GauntletState.phase != InfinityRules::GauntletPhase::Falling) return true;
+        auto pickup = SpawnGroundGauntlet(location);
+        if (result) *result = pickup;
+        if (pickup) Broadcast("The Infinity Gauntlet has landed. First to pick it up becomes Thanos!");
+        return true;
+    }
+    static bool SpawnGauntletMeteor(const FVector& landing, double now) {
+        // Use the actual 4.2 Carmine blueprint: it supplies the incoming trail,
+        // sonic boom, falling audio and impact FX on each client. Moving a plain
+        // FortPickup cannot reproduce that lifecycle.
+        auto type = LoadObject<UClass>(L"/Game/Athena/Playlists/Carmine/MeteorDrop/AthenaSupplyDrop_Meteor_Gauntlet.AthenaSupplyDrop_Meteor_Gauntlet_C");
+        if (!type) return false;
+        FTransform transform{}; transform.Translation = landing;
+        transform.Translation.Z -= 150.f; // GroundAt includes pickup clearance.
+        transform.Rotation = FRotator().Quaternion(); transform.Scale3D = FVector(1,1,1);
+        auto meteor = GetWorld()->SpawnActor<AFortAthenaSupplyDrop>(type, transform,
+            CreateSpawnParameters(ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn,true));
+        if (!meteor) return false;
+        const int landingOffset = meteor->GetOffset("LandingLocation",false);
+        const int groundOffset = meteor->GetOffset("GroundLocation",false);
+        const int initializedOffset = meteor->GetOffset("bGroundLocationInitialized",false);
+        if (landingOffset < 0 || groundOffset < 0 || initializedOffset < 0) { meteor->K2_DestroyActor(); return false; }
+        meteor->Get<FVector>(landingOffset) = transform.Translation;
+        meteor->Get<FVector>(groundOffset) = transform.Translation;
+        meteor->Get<bool>(initializedOffset) = true;
+        // Keep the impact in the fixed arena. Retain the blueprint's own height,
+        // speed, movement, particle and sound settings.
+        for (auto name : { "DescentOffsetMin", "DescentOffsetMax", "DescentYOffsetMin", "DescentYOffsetMax", "InitialFallDelay" }) {
+            const int offset = meteor->GetOffset(name,false); if (offset >= 0) meteor->Get<float>(offset) = 0.f;
+        }
+        GauntletMeteor = Ref(meteor); FallStartedAt = now; GauntletState.Spawned(true);
+        UGameplayStatics::FinishSpawningActor(meteor,transform);
+        meteor->SetNetDormancy(ENetDormancy::DORM_Awake); meteor->ForceNetUpdate();
+        LOG_INFO(LogDev,"Infinity Showdown: native gauntlet meteor spawned; landing {}, {}, {}, actor Z {}.",
+            landing.X,landing.Y,landing.Z,meteor->GetActorLocation().Z);
+        return true;
+    }
+    static void RetirePickup(AFortPickup* pickup, AFortPlayerPawn* pawn, double now) {
+        // Replicate the same consumed state as a normal pickup before destroying
+        // the actor. Immediate destruction skips the client pickup visual cleanup.
+        pickup->FlushNetDormancy(); pickup->SetNetDormancy(ENetDormancy::DORM_Awake);
         auto data = pickup->GetPickupLocationData();
-        data->GetLootInitialPosition() = location; data->GetLootFinalPosition() = location;
-        data->GetFinalTossRestLocation() = location; data->GetTossState() = EFortPickupTossState::AtRest;
-        pickup->TeleportTo(location, FRotator());
-        pickup->OnRep_PickupLocationData(); pickup->ForceNetUpdate();
+        data->GetPickupTarget() = pawn; data->GetItemOwner() = pawn; data->GetFlyTime() = .4f;
+        pickup->OnRep_PickupLocationData();
+        const int offset = pickup->GetOffset("bPickedUp",false);
+        auto property = pickup->GetProperty("bPickedUp",false);
+        if (offset >= 0 && property) pickup->SetBitfieldValue(offset,GetFieldMask(property),true);
+        if (auto notify = pickup->FindFunction("OnRep_bPickedUp")) pickup->ProcessEvent(notify);
+        pickup->ForceNetUpdate();
+        RetiredActors.push_back({ Ref(pickup), now + 2 }); WorldGauntlet = {};
     }
     static void TickGauntlet(double now) {
+        for (auto it = RetiredActors.begin(); it != RetiredActors.end();) {
+            if (now < it->destroyAt) { ++it; continue; }
+            if (auto actor = Cast<AActor>(it->actor.Get())) if (!actor->IsActorBeingDestroyed()) actor->K2_DestroyActor();
+            it = RetiredActors.erase(it);
+        }
         if (GauntletState.Due(now)) {
             auto definition = Gauntlet(); if (!definition) { Faulted = true; Broadcast("Infinity Gauntlet asset unavailable. Restart with Classic."); return; }
             auto location = GauntletLanding;
@@ -450,35 +525,31 @@ namespace InfinityShowdown {
             }
             if (!GroundAt(location)) { GauntletState.due = now + 1; Report("Gauntlet drop delayed: finding a safe landing point."); return; }
             GauntletLanding = location;
-            if (SkyDrop) location.Z += InfinityRules::GauntletHeight;
-            PickupCreateData data;
-            data.ItemEntry = FFortItemEntry::MakeItemEntry(definition,1,-1,MAX_DURABILITY);
-            if (!data.ItemEntry) { GauntletState.due = now + 1; return; }
-            data.bShouldFreeItemEntryWhenDeconstructed = true; data.SpawnLocation = location;
-            data.SourceType = EFortPickupSourceTypeFlag::GetOtherValue(); data.bToss = false;
-            auto pickup = AFortPickup::SpawnPickup(data);
-            if (!pickup) { GauntletState.due = now + 1; return; }
-            const int movement = pickup->GetOffset("MovementComponent",false);
-            if (movement >= 0) if (auto component = pickup->Get<UObject*>(movement)) {
-                if (auto stop = component->FindFunction("StopMovementImmediately")) component->ProcessEvent(stop);
-                if (auto tick = component->FindFunction("SetComponentTickEnabled")) { bool enabled = false; component->ProcessEvent(tick,&enabled); }
+            if (SkyDrop ? !SpawnGauntletMeteor(location,now) : !SpawnGroundGauntlet(location)) {
+                Faulted = true; Broadcast("Infinity Showdown: gauntlet spawn failed. See the server log."); return;
             }
-            if (auto replicate = pickup->FindFunction("SetReplicateMovement")) { bool enabled = true; pickup->ProcessEvent(replicate,&enabled); }
-            pickup->SetNetDormancy(ENetDormancy::DORM_Awake);
-            WorldGauntlet = Ref(pickup); FallStartedAt = now; GauntletState.Spawned(SkyDrop);
-            MoveGauntlet(pickup,location);
             Broadcast(SkyDrop ? "The Infinity Gauntlet is falling into the arena!" : "Thanos dropped the Infinity Gauntlet. Pick it up!");
             LOG_INFO(LogDev,"Infinity Showdown: gauntlet spawned at {}, {}, {} (sky {}).",location.X,location.Y,location.Z,SkyDrop);
         }
-        if (GauntletState.phase == InfinityRules::GauntletPhase::Held || GauntletState.phase == InfinityRules::GauntletPhase::Waiting) return;
-        auto pickup = Cast<AFortPickup>(WorldGauntlet.Get());
-        if (!pickup || pickup->IsActorBeingDestroyed()) { QueueGauntlet(GauntletLanding,now); return; }
-        if (GauntletState.phase == InfinityRules::GauntletPhase::Falling) {
-            const double progress = (std::min)(1.0,(std::max)(0.0,(now-FallStartedAt)/InfinityRules::GauntletFallTime));
-            auto location = GauntletLanding; location.Z += InfinityRules::GauntletHeight * float(1-progress*progress);
-            MoveGauntlet(pickup,location);
-            if (progress >= 1) { GauntletState.Landed(); Broadcast("The Infinity Gauntlet has landed. First to pick it up becomes Thanos!"); }
+        if (auto meteor = Cast<AActor>(GauntletMeteor.Get())) {
+            const int openedOffset = meteor->GetOffset("Opened",false);
+            if (openedOffset >= 0 && meteor->Get<bool>(openedOffset)) {
+                // Some 4.2 loot tables do not invoke the native spawn hook. Only
+                // the actual replicated landing/open event may use this fallback.
+                if (GauntletState.phase == InfinityRules::GauntletPhase::Falling && SpawnGroundGauntlet(GauntletLanding))
+                    Broadcast("The Infinity Gauntlet has landed. First to pick it up becomes Thanos!");
+                RetiredActors.push_back({ GauntletMeteor, now + 12 }); GauntletMeteor = {};
+            }
         }
+        if (GauntletState.phase == InfinityRules::GauntletPhase::Falling) {
+            if (now - FallStartedAt > 60 || !GauntletMeteor.Get()) {
+                Faulted = true; Broadcast("Infinity Showdown: meteor did not finish landing. See the server log.");
+            }
+            return;
+        }
+        if (GauntletState.phase != InfinityRules::GauntletPhase::Available) return;
+        auto pickup = Cast<AFortPickup>(WorldGauntlet.Get());
+        if (!pickup || pickup->IsActorBeingDestroyed()) QueueGauntlet(GauntletLanding,now);
     }
     bool HandlePickup(AFortPlayerPawn* pawn, AFortPickup* pickup) {
         if (!Enabled.load() || !pickup || !pickup->IsValidLowLevel()) return false;
@@ -509,7 +580,9 @@ namespace InfinityShowdown {
         if (!LocalTools::RestoreShield(transformed,InfinityRules::ThanosShield,true)) {
             Faulted = true; Broadcast("Infinity Showdown: Thanos shield could not be set. Stop this session."); return true;
         }
-        transformed->ForceNetUpdate(); pickup->K2_DestroyActor(); WorldGauntlet = {};
+        transformed->ForceNetUpdate();
+        auto game = Cast<AFortGameStateAthena>(GetWorld()->GetGameState());
+        RetirePickup(pickup,transformed,game ? game->GetServerWorldTimeSeconds() : 0);
         LOG_INFO(LogDev,"Infinity Showdown: {} picked up gauntlet, health {}, shield {}.",Thanos,transformed->GetHealth(),transformed->GetShield());
         Broadcast("Infinity Showdown: " + Thanos + " is Thanos! 500 health / 200 shield."); return true;
     }
@@ -573,7 +646,7 @@ namespace InfinityShowdown {
         auto world = GetWorld();
         if (World.Get() != world || Driver.Get() != driver) {
             World = Ref(world); Driver = Ref(driver); Players.clear(); Thanos.clear(); Faulted = false; NextTick = 0;
-            GauntletState = {}; WorldGauntlet = {}; SkyDrop = true;
+            GauntletState = {}; WorldGauntlet = {}; GauntletMeteor = {}; RetiredActors.clear(); SkyDrop = true;
             BusStarted = BusConfigured = BusExited = false; Buses.clear(); BusStartedAt = 0;
         }
         auto game = Cast<AFortGameStateAthena>(world->GetGameState());
