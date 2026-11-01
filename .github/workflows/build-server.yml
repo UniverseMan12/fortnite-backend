@@ -5,6 +5,8 @@ on:
       - 'scripts/patch-reboot.js'
       - 'scripts/patch-local-tools.js'
       - 'scripts/patch-infinity.js'
+      - 'scripts/patch-bot-lobby.js'
+      - 'tests/bot-lobby-rules.cpp'
       - 'tests/infinity-rules.cpp'
       - 'server/**'
       - '.github/workflows/build-server.yml'
@@ -35,6 +37,10 @@ jobs:
           cl /nologo /std:c++20 /EHsc /I server tests\infinity-rules.cpp /Fe:infinity-rules.exe
           if errorlevel 1 exit /b 1
           infinity-rules.exe
+          if errorlevel 1 exit /b 1
+          cl /nologo /std:c++20 /EHsc /I server tests\bot-lobby-rules.cpp /Fe:bot-lobby-rules.exe
+          if errorlevel 1 exit /b 1
+          bot-lobby-rules.exe
           if errorlevel 1 exit /b 1
       - name: Build game server
         run: msbuild "upstream/Project Reboot 3.0.sln" /p:Configuration=Release /p:Platform=x64 /m:2 /verbosity:minimal
