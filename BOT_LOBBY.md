@@ -1,26 +1,27 @@
-# NOVA DROP bot lobby — experimental playtest
+# NOVA DROP bot lobby — experimental v2
 
-This adds basic server-controlled combat opponents to **Classic** and ordinary **Thanos** on the main island. **Infinity Showdown always disables bots**, even if a bot count was previously selected.
+Classic and ordinary Thanos can fill a match to **100 participants**: one human gets up to **99 bots**; two humans get 98. **Infinity Showdown disables all bots.** This stays on `codex/bot-lobby`, separate from the stable v0.4.0 release.
 
-## Start a test
+## Owner playtest
 
-1. Use the separately named bot-lobby test launcher and select Classic or Thanos. Choose Solo or Host friends.
-2. In Reboot, before **Start server**, set **Combat bots (0 = off)** to a small number, such as **3**. The limit is 10; the default is off.
-3. Start the server, enter the island, start the bus and land on the main island. The game must have reached its normal storm phase.
-4. Bots deploy one at a time, approximately 35 metres from grounded human players. Reboot shows the live bot count and setup status.
+Use the separately named **bot-lobby-v2-test** launcher. Select Classic or Thanos, then Solo or Host friends. Before **Start server**, Reboot's **Maximum bots (0 = off)** defaults to 99. Wait on the warmup island until **Warmup bots: 99 / 99** (or the reduced multiplayer count) before starting the bus. Starting early freezes the smaller population; eliminated bots never refill.
 
-## Implemented behavior and limits
+First check movement on the warmup island, then bus departures, distributed landings, bot-versus-bot gunfire and actual damage to your player. Also check a joining friend takes a bot slot before the bus and that Infinity Showdown spawns zero bots. The assistant does not operate the owner's game.
 
-- Bots receive a blue assault rifle, ammunition, a normal character and 100 health. They are separate opponents of human players, including a human playing as Thanos.
-- The controller aims with spread, requests movement toward/around players and uses Fortnite's native firing functions in short bursts. Visibility and range gate shooting; losing the target or line of sight stops an active burst. No direct/artificial damage is applied to players.
-- Existing engine physics handle collisions. The first version has simple steering and occasional jumping; it has no navigation/pathfinding, building, looting, bus jumping or automatic Gauntlet pickup. Bots can get stuck on buildings or terrain and do not plan a route to the storm circle.
-- A killed bot stays eliminated. The configured count is a total spawn budget, not a continuously refilled population. Normal match/elimination logic remains with the server.
-- The count is fixed when the server starts. Restart the session to change it. Repeated setup failures stop the bot system with a status message.
+The original prototype was tested by the owner: bots spawned and could be killed, but neither moved nor fired. That is a failed gameplay test, despite its successful compilation. The v2 implementation below still requires a fresh gameplay test.
 
-## Required owner playtest
+## Changes
 
-Compilation and rules tests cannot establish that Fortnite 4.2's native movement and firing work for a controller without a connected player. This must be checked in game before calling the bot lobby ready or publishing it as a regular release.
+- Configure controllers without a connected player for authority-side movement, a simulated remote pawn role, acknowledged possession and enabled character physics. Verify `IsLocallyControlled`; reconfigure after the bus replaces a pawn.
+- Submit movement every engine frame. Target selection and path planning run less frequently. The original prototype submitted movement only at 10 Hz and did not configure local control.
+- Activate the native rifle ability on authority if `PawnStartFire` did not already activate it. Use native bullets, collision, damage and reload; no artificial direct damage or decorative gunfire.
+- Spawn in small batches at native warmup starts. Warmup bots do not fight and cannot be damaged. Before the bus, human arrivals remove excess bots and resolve team collisions. Bots get independent teams in the normal 2–101 range.
+- Track warmup, bus, airborne, grounded and eliminated states. Use the original aircraft-jump implementation only during the unlocked drop window. Schedule departure near the assigned landing destination along the bus route, then steer through native skydiving movement.
+- Choose landing destinations from spatially distributed cells containing actual island loot containers, excluding the warmup island. Native skydiving physics determine the actual landing; this does not teleport bots to destinations.
+- Target living enemies of either kind: players and bots. Prefer visible nearby opponents; stop firing after losing the target or visibility. Approach, strafe at close range and prioritize reaching the next storm circle.
+- Request paths from native navigation when available, with a bounded request budget. Without usable navigation, use directional movement and a stuck/jump recovery. No building, looting, advanced cover tactics or automatic Gauntlet pickup yet. Complex buildings and cliffs remain a playtest concern.
+- Reboot displays observed movement and firing counts. Movement requires a measured position change; firing requires a decrease in actual weapon ammunition. These counters do not by themselves establish correct damage, navigation or 99-bot performance.
 
-[Native build 41333077696](https://github.com/UniverseMan12/Nova_launcher_4.2/actions/runs/41333077696) passed compilation, bot combat rules and Infinity Showdown rules from `9adc2c19475ebd347fabf933123a94269e462dea`. Artifact `13093959342` matched GitHub's archive checksum; its DLL matched the included checksum and the updated dependency pin. All 45 Node regression tests passed. No in-game bot playtest has been performed yet.
+## Validation
 
-With three bots, check that they appear after landing, move, visibly fire and actually damage you; check that killing a bot reduces the count and that Classic/Thanos both work. Also check that selecting Infinity Showdown produces zero bots. The assistant does not operate the owner's game for this test.
+The C++ rules test covers the 100-participant cap, Infinity Showdown exclusion, team/self/death exclusions, the locked bus/drop window, distributed jump scheduling, shooting range, line-of-sight gating and burst cooldown. Native compilation and launcher regression tests are run before packaging. Full-match performance and native 4.2 behavior need the owner's game test before a stable release.
