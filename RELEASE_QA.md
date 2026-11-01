@@ -1,6 +1,6 @@
 # Desktop release checks
 
-## 0.4.0-alpha.3 — ordinary Thanos mode (development preview)
+## 0.4.0-alpha.3 — ordinary Thanos mode (prerelease)
 
 - Added a third launcher selection for the existing Carmine / Infinity Gauntlet playlist. The native preset disables Infinity Showdown, late-game and practice respawning; it does not apply Showdown's arena, starter kit or respawn rules.
 - **36 Node tests passed**, including saved Thanos settings and worker routing for solo, host and joining sessions. **11 desktop tests passed**, including distinct artwork, saved mode selection, host-controlled join rules and the three cards at supported window sizes. Thanos screenshots at 940×700 and 1200×820 were visually inspected.
@@ -8,7 +8,7 @@
 - [Native build 41308510309](https://github.com/UniverseMan12/fortnite-4-2-launcher/actions/runs/41308510309) passed compilation and native rules tests from `9004ee1cde9920d88f6b06e1ecbedc86bd2c2ed0`. Artifact `13084366928` matched the GitHub archive digest `3a8f0b19fb3be8076d5de7a45e3b2a59a718b3cf98ef63df12bb35923fcdb94f`; DLL digest `7b825bfa081151b58db35414e835b9c92fa296e192f934dbe500fb099b1faf9a` matched its bundled checksum and is pinned in `dependencies.lock.json`.
 - All 846 staged and unpacked payload hashes passed, including the new native pin and the public profile-template checks.
 - The packaged EXE passed fresh-profile preparation and started the actual game-server helper with Thanos selected up to Reboot settings, then stopped it cleanly. No Fortnite processes remained; original game settings were restored.
-- Installer and portable EXEs were rebuilt with the verified native DLL. The portable smoke test passed self-extraction, the Thanos mode card and its bundled artwork, payload preparation, invalid-folder recovery and clean close. Checksums are generated in `dist/SHA256SUMS.txt`. These are local development-preview artifacts, not a newly published release.
+- Installer and portable EXEs were rebuilt locally with the verified native DLL. The portable smoke test passed self-extraction, the Thanos mode card and its bundled artwork, payload preparation, invalid-folder recovery and clean close. Checksums are generated in `dist/SHA256SUMS.txt`. The release uses these tested artifacts, with runtime source at `69a9a2d`; the publication commit only updates release documentation. Every uploaded asset is checked against its local size and SHA-256 digest before publication.
 - The actual launcher screenshot is committed at `docs/launcher-preview.png` and included in the README. A documentation-only commit on `main` adds the screenshot and clearly distinguishes the upcoming preview from the published alpha.2 and stable 0.3.1 releases; no experimental runtime code was merged into `main`.
 - A complete ordinary Thanos match, including the falling gauntlet, has not been played during this update. Automatic server startup is not part of this change: Reboot opens with the requested mode selected and still waits for **Start server**.
 
