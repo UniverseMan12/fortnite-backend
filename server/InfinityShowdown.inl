@@ -39,7 +39,8 @@ namespace InfinityShowdown {
     static bool BusStarted = false, BusConfigured = false, BusExited = false;
     static double BusStartedAt = 0;
     static std::vector<Ref> Buses;
-    static std::string Thanos, PreviousThanos;
+    static std::string Thanos;
+    static InfinityRules::Selection RoleSelection;
     static std::mt19937 Random(std::random_device{}());
     static bool AssignmentSucceeded = false, Faulted = false;
     static double NextTick = 0, NextSelection = 0;
@@ -448,7 +449,11 @@ namespace InfinityShowdown {
         auto result = player.lives.Die((uint64_t(uint32_t(life.serial)) << 32) | uint32_t(life.index));
         if (result == InfinityRules::Lives::Duplicate) return true;
         player.location = pawn->GetActorLocation();
-        if (Thanos == found->first) { PreviousThanos = Thanos; Thanos.clear(); player.restore = true; }
+        if (Thanos == found->first) {
+            Thanos.clear(); player.restore = true;
+            RoleSelection.Wait(game->GetServerWorldTimeSeconds());
+            Broadcast("Infinity Showdown: Thanos was defeated. A random eligible player will be selected in 20 seconds.");
+        }
         if (result == InfinityRules::Lives::Eliminate) {
             // Remove the gadget before native final elimination; inventory dropping is disabled for this mode.
             RestoreEquipment(Cast<AFortPlayerControllerAthena>(controller), player);
@@ -462,7 +467,7 @@ namespace InfinityShowdown {
         if (!Enabled.load() || !driver || !Globals::bStartedListening) return;
         auto world = GetWorld();
         if (World.Get() != world || Driver.Get() != driver) {
-            World = Ref(world); Driver = Ref(driver); Players.clear(); Thanos.clear(); PreviousThanos.clear(); Faulted = false; NextTick = NextSelection = 0;
+            World = Ref(world); Driver = Ref(driver); Players.clear(); Thanos.clear(); RoleSelection = {}; Faulted = false; NextTick = NextSelection = 0;
             BusStarted = BusConfigured = BusExited = false; Buses.clear(); BusStartedAt = 0;
         }
         auto game = Cast<AFortGameStateAthena>(world->GetGameState());
@@ -490,7 +495,10 @@ namespace InfinityShowdown {
             auto& player = pair.second; auto controller = Cast<AFortPlayerControllerAthena>(player.controller.Get());
             if (!player.connected || !controller) {
                 if (game->GetGamePhase() >= EAthenaGamePhase::Aircraft) player.lives.Disconnect();
-                if (Thanos == pair.first) { PreviousThanos = Thanos; Thanos.clear(); }
+                if (Thanos == pair.first) {
+                    Thanos.clear(); RoleSelection.Wait(now);
+                    Broadcast("Infinity Showdown: Thanos disconnected. A random eligible player will be selected in 20 seconds.");
+                }
                 continue;
             }
             if (player.lives.eliminated) {
@@ -522,10 +530,8 @@ namespace InfinityShowdown {
             if (firstLanding && player.landing.landedAt >= 0) Tell(controller, "Landed. You become eligible for Thanos in 20 seconds.");
         }
         if (!Thanos.empty() || eligible.empty() || now < NextSelection) return;
+        auto selected = RoleSelection.Choose(eligible, Random, now); if (selected.empty()) return;
         NextSelection = now + 2;
-        size_t contenders = 0;
-        for (const auto& pair : Players) if (pair.second.connected && !pair.second.lives.eliminated) ++contenders;
-        auto selected = InfinityRules::Choose(eligible, PreviousThanos, Random, contenders == 1); if (selected.empty()) return;
         auto& player = Players.at(selected); auto controller = Cast<AFortPlayerControllerAthena>(player.controller.Get());
         auto inventory = controller ? controller->GetWorldInventory() : nullptr; auto gauntlet = Gauntlet();
         if (!inventory || !gauntlet || !Addresses::ApplyGadgetData || !Addresses::RemoveGadgetData || !Globals::bEnableAGIDs) {

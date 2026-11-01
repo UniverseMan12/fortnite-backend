@@ -53,13 +53,27 @@ int main() {
     assert(b.Die(200)==Lives::Respawn && b.remaining==9);
     b.Disconnect(); assert(b.eliminated && !b.pending && b.remaining==9);
     std::mt19937 random(42); std::set<std::string> selected;
-    for(int i=0;i<1000;++i) {auto chosen=Choose({"a","b","c"},"b",random);assert(chosen!="b" && !chosen.empty()); selected.insert(chosen);}
-    assert(selected==std::set<std::string>({"a","c"}));
-    assert(Choose({},"",random).empty());
-    assert(Choose({"a"},"a",random).empty());
-    assert(Choose({"a"},"a",random,true)=="a");
-    assert(Choose({"a","b"},"a",random,true)=="b");
-    assert(Choose({},"a",random,true).empty());
-    assert(Choose({"a"},"",random)=="a");
-    std::cout << "PASS: landing delay, airborne exclusion, new-life delay, bus timing, 10 respawns, independent budgets, duplicate deaths, failed-spawn retries, disconnect forfeits and random role rotation.\n";
+    Selection selection;
+    assert(selection.Choose({"a"},random,0)=="a"); // First selection has only the landing delay.
+    selection.Wait(200); // Thanos dies while other players are already eligible.
+    assert(landing.Ready(2,true,200));
+    assert(selection.Choose({"killer","previous","survivor"},random,200).empty());
+    assert(selection.Choose({"killer","previous","survivor"},random,219.99).empty());
+    auto untouchedRandom = random;
+    assert(selection.Choose({"killer"},random,210).empty());
+    assert(random == untouchedRandom); // Waiting must not secretly roll a winner.
+    for(int i=0;i<1000;++i) {
+        auto chosen=selection.Choose({"killer","previous","survivor"},random,220);
+        assert(!chosen.empty()); selected.insert(chosen);
+    }
+    assert(selected==std::set<std::string>({"killer","previous","survivor"}));
+    assert(selection.Choose({},random,220).empty());
+    assert(selection.Choose({"previous"},random,220)=="previous"); // Solo / only ready player.
+    selection.Wait(250); // Every subsequent loss starts a fresh 20 seconds.
+    assert(selection.Choose({"killer"},random,269.99).empty());
+    assert(selection.Choose({},random,270).empty());
+    assert(selection.Choose({"killer"},random,275)=="killer"); // An empty pool does not restart the timer.
+    selection = {}; // A new world must not inherit the previous match's cooldown.
+    assert(selection.Choose({"a"},random,0)=="a");
+    std::cout << "PASS: landing and reselection delays, all eligible players in random pool, airborne exclusion, new-life delay, bus timing, 10 respawns, independent budgets, duplicate deaths, failed-spawn retries and disconnect forfeits.\n";
 }

@@ -59,14 +59,16 @@ namespace InfinityRules {
         void Spawned() { pending = false; }
         void Disconnect() { pending = false; eliminated = true; }
     };
-    template<class Generator>
-    std::string Choose(const std::vector<std::string>& eligible, const std::string& previous, Generator& random, bool alone = false) {
-        std::vector<std::string> candidates;
-        for (const auto& id : eligible) if (id != previous) candidates.push_back(id);
-        // Solo testing can reassign the role after a new landing delay. In a
-        // multiplayer round, wait for another contender rather than repeat it.
-        if (candidates.empty() && alone && eligible.size() == 1) return eligible.front();
-        if (candidates.empty()) return {};
-        return candidates[std::uniform_int_distribution<size_t>(0, candidates.size() - 1)(random)];
-    }
+    struct Selection {
+        double availableAt = 0;
+        // Surviving players may have completed their landing delay already.
+        // Losing Thanos starts a separate, shared cooldown for the whole pool.
+        void Wait(double now) { availableAt = now + SelectionDelay; }
+        template<class Generator>
+        std::string Choose(const std::vector<std::string>& eligible, Generator& random, double now) const {
+            if (now < availableAt || eligible.empty()) return {};
+            // Every eligible player has the same chance, including the previous Thanos.
+            return eligible[std::uniform_int_distribution<size_t>(0, eligible.size() - 1)(random)];
+        }
+    };
 }
