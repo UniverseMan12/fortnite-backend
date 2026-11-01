@@ -7,9 +7,6 @@ class UFortItemDefinition;
 class UNetDriver;
 class AFortGameModeAthena;
 class UObject;
-class AFortPlayerPawn;
-class AFortPickup;
-struct FVector;
 namespace InfinityShowdown {
     inline std::atomic<bool> Enabled(false);
     inline std::atomic<bool> BusRequested(false);
@@ -18,9 +15,6 @@ namespace InfinityShowdown {
     inline void Report(const std::string& value) { std::lock_guard<std::mutex> lock(InfoMutex); Info = value; }
     inline std::string ReadInfo() { std::lock_guard<std::mutex> lock(InfoMutex); return Info; }
     bool OnDeath(AFortPlayerController* controller);
-    bool HandlePickup(AFortPlayerPawn* pawn, AFortPickup* pickup);
-    bool BlockGadgetInventoryDrop(UFortItemDefinition* definition);
-    bool HandleMeteorLoot(UObject* source, UFortItemDefinition* definition, const FVector& location, AFortPickup** result);
     bool CanJumpFromBus(AFortPlayerController* controller);
     void Tick(UNetDriver* driver);
     void GadgetApplied(AFortPlayerController* controller, UFortItemDefinition* definition, bool success);

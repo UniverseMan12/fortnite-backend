@@ -8,19 +8,7 @@
 // Engine-independent rules. A life token identifies a pawn, not a death callback.
 namespace InfinityRules {
     constexpr int RespawnLimit = 10;
-    constexpr double GauntletDelay = 20.0;
-    constexpr float MeteorHeight = 60000.f, MeteorSpeed = 6000.f;
-    constexpr float ThanosHealth = 500.f, ThanosShield = 200.f;
-    enum class GauntletPhase { Waiting, Falling, Available, Held };
-    struct GauntletCycle {
-        GauntletPhase phase = GauntletPhase::Waiting;
-        double due = -1;
-        void Schedule(double now, double delay) { phase = GauntletPhase::Waiting; due = now + delay; }
-        bool Due(double now) const { return phase == GauntletPhase::Waiting && due >= 0 && now >= due; }
-        void Spawned(bool falling) { phase = falling ? GauntletPhase::Falling : GauntletPhase::Available; }
-        void Landed() { if (phase == GauntletPhase::Falling) phase = GauntletPhase::Available; }
-        bool Claim() { if (phase != GauntletPhase::Available) return false; phase = GauntletPhase::Held; return true; }
-    };
+    constexpr double SelectionDelay = 20.0;
     constexpr float ArenaRadius = 15000.f;
     constexpr float RespawnHeight = 20000.f;
     inline float LargerArena(float previous) {
@@ -48,6 +36,15 @@ namespace InfinityRules {
             return radius;
         }
     };
+    struct Landing {
+        uint64_t pawn = 0;
+        double landedAt = -1;
+        bool Ready(uint64_t life, bool grounded, double now) {
+            if (pawn != life) { pawn = life; landedAt = -1; }
+            if (grounded && landedAt < 0) landedAt = now;
+            return grounded && landedAt >= 0 && now >= landedAt + SelectionDelay;
+        }
+    };
     struct Lives {
         int remaining = RespawnLimit;
         bool pending = false, eliminated = false;
@@ -62,4 +59,14 @@ namespace InfinityRules {
         void Spawned() { pending = false; }
         void Disconnect() { pending = false; eliminated = true; }
     };
+    template<class Generator>
+    std::string Choose(const std::vector<std::string>& eligible, const std::string& previous, Generator& random, bool alone = false) {
+        std::vector<std::string> candidates;
+        for (const auto& id : eligible) if (id != previous) candidates.push_back(id);
+        // Solo testing can reassign the role after a new landing delay. In a
+        // multiplayer round, wait for another contender rather than repeat it.
+        if (candidates.empty() && alone && eligible.size() == 1) return eligible.front();
+        if (candidates.empty()) return {};
+        return candidates[std::uniform_int_distribution<size_t>(0, candidates.size() - 1)(random)];
+    }
 }

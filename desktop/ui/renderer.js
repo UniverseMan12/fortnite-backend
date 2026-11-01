@@ -42,9 +42,9 @@ function renderRules() {
   if (art.getAttribute('src') !== source) art.src = source;
   art.alt = useThanos ? 'Thanos holding the Infinity Gauntlet' : 'Carbide and Omega face off in Fortnite Season 4';
   $('hero-title').innerHTML = thanos && local ? 'WIELD<br>THE POWER.' : useThanos ? 'INFINITY.<br>YOUR WAY.' : 'BRACE<br>FOR IMPACT.';
-  $('hero-description').textContent = thanos && local ? 'The whole island. A falling Infinity Gauntlet. Find it. Become Thanos.' : useThanos ? 'The Gauntlet falls. Fight for its power. Ten second chances in a fixed endgame arena.' : 'The original island. The familiar drop. Your next session starts here.';
-  $('rules-description').textContent = mode === 'join' ? 'Your host chooses the game mode. Paste their invitation below.' : thanos ? 'Full map · Gauntlet drop · Normal storm · No Showdown respawns. Experimental.' : showdown ? 'Gauntlet drop · 500 HP / 200 shield · 10 respawns · Sniper kit & refill. Experimental.' : 'Solo practice or a private match with friends.';
-  if (showdown && mode !== 'join') $('mode-note').textContent = 'Choose Start server in Reboot, then click Start Bus when everyone has joined. Pick up the falling Gauntlet to become Thanos.';
+  $('hero-description').textContent = thanos && local ? 'The whole island. A falling Infinity Gauntlet. Find it. Become Thanos.' : useThanos ? 'One random Thanos. Ten second chances. Drop into a fixed endgame arena.' : 'The original island. The familiar drop. Your next session starts here.';
+  $('rules-description').textContent = mode === 'join' ? 'Your host chooses the game mode. Paste their invitation below.' : thanos ? 'Full map · Gauntlet drop · Normal storm · No Showdown respawns. Experimental.' : showdown ? 'Random Thanos · 10 respawns · Retained loot · Fixed arena. Experimental.' : 'Solo practice or a private match with friends.';
+  if (showdown && mode !== 'join') $('mode-note').textContent = 'Choose Start server in Reboot. Once everyone has joined the island, click Start Bus. The server chooses Thanos automatically.';
   else if (thanos && local) $('mode-note').textContent = 'Thanos is preselected in Reboot. Click Start server, then Play in Fortnite. Start Bus Countdown when everyone is ready.';
   else $('mode-note').textContent = notes[mode];
   const missingGame = !$('game-path').value.trim();

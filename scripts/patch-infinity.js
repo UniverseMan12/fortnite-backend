@@ -23,25 +23,6 @@ export function patchInfinity(root) {
     ['if (GadgetItemDefinition->ShouldDropAllItemsOnEquip())','if (GadgetItemDefinition->ShouldDropAllItemsOnEquip() && !InfinityShowdown::Enabled.load())'],
     ['LOG_INFO(LogDev, "DidApplyingGadgetSucceed: {}", DidApplyingGadgetSucceed);','InfinityShowdown::GadgetApplied(FortPlayerController, ItemDefinition, DidApplyingGadgetSucceed);\n\t\t\t\t\tLOG_INFO(LogDev, "DidApplyingGadgetSucceed: {}", DidApplyingGadgetSucceed);']
   ]);
-  edit('FortPlayerPawn.cpp', [
-    ['#include "FortPlayerPawn.h"', '#include "FortPlayerPawn.h"\n#include "InfinityShowdown.h"'],
-    ['void AFortPlayerPawn::ServerHandlePickupHook(AFortPlayerPawn* Pawn, AFortPickup* Pickup, float InFlyTime, FVector InStartDirection, bool bPlayPickupSound)\n{',
-     'void AFortPlayerPawn::ServerHandlePickupHook(AFortPlayerPawn* Pawn, AFortPickup* Pickup, float InFlyTime, FVector InStartDirection, bool bPlayPickupSound)\n{\n\tif (InfinityShowdown::HandlePickup(Pawn, Pickup)) return;'],
-    ['auto Pickup = *(AFortPickup**)(__int64(Params) + PickupOffset);',
-     'auto Pickup = *(AFortPickup**)(__int64(Params) + PickupOffset);\n\tif (InfinityShowdown::HandlePickup(Pawn, Pickup)) return;']
-  ]);
-  edit('FortPickup.cpp', [
-    ['#include "FortPickup.h"', '#include "FortPickup.h"\n#include "InfinityShowdown.h"'],
-    ['auto Pawn = Cast<AFortPlayerPawn>(Pickup->GetPickupLocationData()->GetPickupTarget());',
-     'auto Pawn = Cast<AFortPlayerPawn>(Pickup->GetPickupLocationData()->GetPickupTarget());\n\tif (InfinityShowdown::HandlePickup(Pawn, Pickup)) return 0;']
-  ]);
-  edit('FortAthenaSupplyDrop.cpp', [
-    ['#include "FortAthenaSupplyDrop.h"', '#include "FortAthenaSupplyDrop.h"\n#include "InfinityShowdown.h"'],
-    ['\tSpawnGameModePickupOriginal(Context, Stack, Ret);',
-     '\tif (InfinityShowdown::HandleMeteorLoot(Context, ItemDefinition, Position, Ret)) {\n\t\tif (Stack.Code) ++Stack.Code; // P_FINISH: consume EX_EndFunctionParms.\n\t\treturn Ret ? *Ret : nullptr;\n\t}\n\tSpawnGameModePickupOriginal(Context, Stack, Ret);'],
-    ['\tSpawnPickupOriginal(Context, Stack, Ret);',
-     '\tif (InfinityShowdown::HandleMeteorLoot(Context, ItemDefinition, Position, Ret)) {\n\t\tif (Stack.Code) ++Stack.Code; // P_FINISH: consume EX_EndFunctionParms.\n\t\treturn Ret ? *Ret : nullptr;\n\t}\n\tSpawnPickupOriginal(Context, Stack, Ret);']
-  ]);
   edit('FortPlayerController.cpp', [
     ['#include "LocalTools.h"','#include "LocalTools.h"\n#include "InfinityShowdown.h"'],
     ['\tif (Engine_Version < 424 && !Globals::bLateGame.load())',
@@ -94,40 +75,4 @@ export function patchInfinity(root) {
 ${before}`);
     fs.writeFileSync(gui, source);
   }
-  source = fs.readFileSync(gui, 'utf8').replace('Infinity Showdown: random Thanos, 10 respawns, retained loot.', 'Infinity Showdown: falling Gauntlet, 500 HP / 200 shield, sniper kit, full respawn refill.');
-  fs.writeFileSync(gui, source);
-
-  // Upgrade existing v2 checkouts too. 4.2 uses WithSwap, while the later
-  // WithRequestedSwap RPC above is absent in its SDK.
-  const upgrade = (file, marker, before, after) => {
-    const target = path.join(directory,file);
-    const text = fs.readFileSync(target,'utf8').replaceAll('\r\n','\n');
-    if (text.includes(marker)) return;
-    if (text.split(before).length !== 2) throw new Error(`Infinity legacy pickup patch mismatch in ${file}`);
-    fs.writeFileSync(target,text.replace(before,after));
-  };
-  const signature = 'static void ServerHandlePickupHook(AFortPlayerPawn* Pawn, AFortPickup* Pickup, float InFlyTime, FVector InStartDirection, bool bPlayPickupSound);';
-  upgrade('FortPlayerPawn.h','ServerHandlePickupWithSwapOriginal',signature,
-    `static inline void (*ServerHandlePickupWithSwapOriginal)(AFortPlayerPawn*, AFortPickup*, const FGuid&, float, const FVector&, bool);
-\tstatic void ServerHandlePickupWithSwapHook(AFortPlayerPawn* Pawn, AFortPickup* Pickup, const FGuid& Swap, float InFlyTime, const FVector& InStartDirection, bool bPlayPickupSound);
-\t${signature}`);
-  const hook = 'void AFortPlayerPawn::ServerHandlePickupHook(AFortPlayerPawn* Pawn, AFortPickup* Pickup, float InFlyTime, FVector InStartDirection, bool bPlayPickupSound)';
-  upgrade('FortPlayerPawn.cpp','void AFortPlayerPawn::ServerHandlePickupWithSwapHook',hook,
-    `void AFortPlayerPawn::ServerHandlePickupWithSwapHook(AFortPlayerPawn* Pawn, AFortPickup* Pickup, const FGuid& Swap, float InFlyTime, const FVector& InStartDirection, bool bPlayPickupSound)
-{
-\tif (InfinityShowdown::HandlePickup(Pawn, Pickup)) return;
-\tif (ServerHandlePickupWithSwapOriginal) ServerHandlePickupWithSwapOriginal(Pawn, Pickup, Swap, InFlyTime, InStartDirection, bPlayPickupSound);
-}
-
-${hook}`);
-  const registration = '    static auto ServerHandlePickupInfoFn = FindObject<UFunction>(L"/Script/FortniteGame.FortPlayerPawn.ServerHandlePickupInfo");';
-  upgrade('dllmain.cpp','AFortPlayerPawn::ServerHandlePickupWithSwapHook',registration,
-    `    if (auto LegacyPickupWithSwap = FindObject<UFunction>(L"/Script/FortniteGame.FortPlayerPawn.ServerHandlePickupWithSwap")) {
-        Hooking::MinHook::Hook(FortPlayerPawnAthenaDefault, LegacyPickupWithSwap,
-            AFortPlayerPawn::ServerHandlePickupWithSwapHook, (PVOID*)&AFortPlayerPawn::ServerHandlePickupWithSwapOriginal, false);
-    }
-${registration}`);
-  const drop = 'void AFortPlayerController::ServerDropAllItemsHook(AFortPlayerController* PlayerController, UFortItemDefinition* IgnoreItemDef)\n{';
-  upgrade('FortPlayerController.cpp','InfinityShowdown::BlockGadgetInventoryDrop',drop,
-    `${drop}\n\tif (InfinityShowdown::BlockGadgetInventoryDrop(IgnoreItemDef)) return;`);
 }
