@@ -19,7 +19,7 @@ namespace BotLobby {
         double planAt = 0, pathAt = 0, jumpAt = 0, stopJumpAt = 0, sampleAt = 0, wanderAt = 0, retryAt = 0;
         double busJumpAt = -1;
         int id = 0, lastAmmo = -1, stalls = 0;
-        bool moved = false, fired = false, ready = false;
+        bool moved = false, fired = false, ready = false, fireWarning = false;
     };
     static std::vector<Bot> Active;
     static std::vector<FVector> WarmupPoints, LandingPoints;
@@ -282,6 +282,12 @@ namespace BotLobby {
         bot.planAt=now+.25+Rand(0,.10f);
         const auto from=pawn->GetActorLocation();
         if(bot.stage==Stage::Air) {
+            // Long cross-map destinations require deploying before the automatic low
+            // altitude opening. Use the real parachute action, never teleport a landing.
+            const float height=from.Z-bot.destination.Z;
+            if(height>2500 && FlatDistance(from,bot.destination)>height*1.2f && !Read<bool>(pawn,"bIsParachuteOpen") && now>=bot.jumpAt) {
+                Call open(pawn,"OnOpenParachute"); open.Run(); bot.jumpAt=now+1;
+            }
             bot.input=Direction(from,bot.destination); Aim(controller,from,bot.destination); return;
         }
         auto state=Cast<AFortPlayerStateAthena>(controller->GetPlayerState()); if(!state) return;
@@ -314,7 +320,14 @@ namespace BotLobby {
         if(action==BotLobbyRules::Burst::Start) {
             auto weapon=pawn->GetCurrentWeapon();
             if(weapon && weapon->GetAmmoCount()<=0) { Call reload(weapon,"Reload"); reload.Run(); bot.burst.firing=false; bot.burst.nextAt=now+3; }
-            else if(!Fire(controller,pawn,true)) { bot.burst.firing=false; bot.burst.nextAt=now+2; }
+            else if(!Fire(controller,pawn,true)) {
+                Fire(controller,pawn,false); bot.burst.firing=false; bot.burst.nextAt=now+2;
+                if(!bot.fireWarning) {
+                    LOG_WARN(LogDev,"Bot lobby: NovaBot_{} native rifle activation rejected (ammo {}, handle {}).",bot.id,
+                        weapon ? weapon->GetAmmoCount() : -1,Read<FGameplayAbilitySpecHandle>(weapon,"PrimaryAbilitySpecHandle").Handle);
+                    bot.fireWarning=true;
+                }
+            }
         }
         PathTo(bot,pawn,goal,now);
         while(bot.pathIndex<bot.path.size() && FlatDistance(from,bot.path[bot.pathIndex])<180) ++bot.pathIndex;
@@ -386,7 +399,7 @@ namespace BotLobby {
             if(state->IsInAircraft()) {
                 if(bot.stage!=Stage::Bus) {
                     if(auto old=Cast<AFortPlayerPawn>(bot.pawn.Get())) Fire(controller,old,false);
-                    bot.burst={}; bot.stage=Stage::Bus; bot.input={}; bot.ready=false; bot.path.clear();
+                    bot.burst={}; bot.stage=Stage::Bus; bot.input={}; bot.ready=false; bot.path.clear(); bot.moved=false;
                     if(!LandingPoints.empty()) bot.destination=LandingPoints[(bot.id-1)%LandingPoints.size()];
                 }
                 if(aircraft && !Faulted) {
@@ -437,7 +450,7 @@ namespace BotLobby {
             if(!move.Run()) { Fail("Bot movement input function is unavailable."); break; }
             if(now>=bot.sampleAt) {
                 const auto position=pawn->GetActorLocation(); const float delta=FlatDistance(position,bot.lastLocation);
-                if(delta>40) { bot.moved=true; bot.stalls=0; } else if(bot.input.X!=0 || bot.input.Y!=0) ++bot.stalls;
+                if(delta>40) { if(bot.stage!=Stage::Air) bot.moved=true; bot.stalls=0; } else if(bot.input.X!=0 || bot.input.Y!=0) ++bot.stalls;
                 bot.lastLocation=position; bot.sampleAt=now+1;
             }
             if(auto weapon=pawn->GetCurrentWeapon()) {
